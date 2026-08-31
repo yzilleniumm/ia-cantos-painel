@@ -213,8 +213,17 @@
 
 <script>
 const GIST_RAW_URL = "https://gist.githubusercontent.com/yzilleniumm/38dee4e466b9787f8ec9d4bce19dc163/raw/registro_leitura_facil.csv";
+const CHECKS_RAW_URL = "https://gist.githubusercontent.com/yzilleniumm/38dee4e466b9787f8ec9d4bce19dc163/raw/checks.json";
+const GIST_ID = "38dee4e466b9787f8ec9d4bce19dc163";
+// Token com escopo APENAS "gist" -- de propósito público nesta página, só consegue mexer em Gists.
+const GIST_WRITE_TOKEN = "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";
 
 let dadosCompletos = [];
+let checksData = {};
+
+function chaveJogo(l) {
+  return `${l["Jogo"]}__${l["Data"]}`;
+}
 
 function parsePercentual(str) {
   if (!str) return null;
@@ -264,11 +273,66 @@ function formatarData(str) {
   }) + ' (BRT)';
 }
 
+async function carregarChecks() {
+  try {
+    const resp = await fetch(CHECKS_RAW_URL + '?t=' + Date.now());
+    if (!resp.ok) throw new Error('status ' + resp.status);
+    const texto = await resp.text();
+    checksData = texto.trim() ? JSON.parse(texto) : {};
+  } catch (erro) {
+    console.warn('Não consegui carregar checks.json, iniciando vazio:', erro.message);
+    checksData = {};
+  }
+}
+
+async function salvarChecks() {
+  try {
+    const resp = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
+      method: 'PATCH',
+      headers: {
+        'Authorization': `token ${GIST_WRITE_TOKEN}`,
+        'Accept': 'application/vnd.github+json'
+      },
+      body: JSON.stringify({ files: { 'checks.json': { content: JSON.stringify(checksData) } } })
+    });
+    if (!resp.ok) throw new Error('status ' + resp.status);
+    return true;
+  } catch (erro) {
+    console.error('Falha ao salvar checks:', erro.message);
+    return false;
+  }
+}
+
+function podarChecksAntigos() {
+  const chavesValidas = new Set(
+    dadosCompletos.filter(l => l["Aconteceu?"] === "Ainda não jogou").map(chaveJogo)
+  );
+  let mudou = false;
+  for (const chave of Object.keys(checksData)) {
+    if (!chavesValidas.has(chave)) {
+      delete checksData[chave];
+      mudou = true;
+    }
+  }
+  return mudou;
+}
+
+async function alternarCheck(chave) {
+  if (checksData[chave]) {
+    delete checksData[chave];
+  } else {
+    checksData[chave] = true;
+  }
+  renderizarPainel();
+  await salvarChecks();
+}
+
 function renderizarPainel() {
   const filtroValePena = document.getElementById('filtro-vale-pena').checked;
   const filtroChanceMin = parseFloat(document.getElementById('filtro-chance-min').value) || 0;
   const filtroSoPendentes = document.getElementById('filtro-pendentes').checked;
   const filtroEsconderHistCurto = document.getElementById('filtro-hist-curto').checked;
+  const filtroSoMarcados = document.getElementById('filtro-marcados').checked;
   const filtroBusca = document.getElementById('filtro-busca').value.trim().toLowerCase();
 
   const pendentesTotal = dadosCompletos.filter(l => l["Aconteceu?"] === "Ainda não jogou");
@@ -319,6 +383,7 @@ function renderizarPainel() {
     if (filtroBusca && !l["Jogo"].toLowerCase().includes(filtroBusca) && !l["Liga"].toLowerCase().includes(filtroBusca)) return false;
     const info = interpretarDetalhes(l["Detalhes"]);
     if (filtroEsconderHistCurto && info.historicoCurto) return false;
+    if (filtroSoMarcados && !checksData[chaveJogo(l)]) return false;
     return true;
   });
 
@@ -330,6 +395,7 @@ function renderizarPainel() {
       <label>Chance mínima <input type="number" id="filtro-chance-min-inner" value="${filtroChanceMin}" min="0" max="100" step="1">%</label>
       <label><input type="checkbox" id="filtro-pendentes-inner" ${filtroSoPendentes ? 'checked' : ''}> Só jogos futuros</label>
       <label><input type="checkbox" id="filtro-hist-curto-inner" ${filtroEsconderHistCurto ? 'checked' : ''}> Esconder times com histórico curto</label>
+      <label><input type="checkbox" id="filtro-marcados-inner" ${filtroSoMarcados ? 'checked' : ''}> Mostrar só marcados</label>
       <input type="text" id="filtro-busca-inner" placeholder="Buscar time ou liga..." value="${filtroBusca}">
       <span class="count-tag">${filtrados.length} de ${dadosCompletos.length} jogos</span>
     </div>
@@ -353,6 +419,9 @@ function renderizarPainel() {
         tagHtml = '<span class="tag pendente">Sem dado</span>';
       }
       const info = interpretarDetalhes(l["Detalhes"]);
+      const chave = chaveJogo(l);
+      const marcado = !!checksData[chave];
+      const mostrarCheck = aconteceu === "Ainda não jogou";
       return `
         <div class="match ${vale ? 'vale' : 'nao-vale'}">
           <div>
@@ -369,7 +438,10 @@ function renderizarPainel() {
             <div class="match-stat-label">valor esperado</div>
             ${info.veAlto ? `<div class="badge-ve-alto">VE alto</div>` : ''}
           </div>
-          <div>${tagHtml}</div>
+          <div style="display:flex; flex-direction:column; align-items:flex-end; gap:6px;">
+            ${tagHtml}
+            ${mostrarCheck ? `<button class="btn-check" data-chave="${chave.replace(/"/g, '&quot;')}" style="font-size:11px; padding:4px 10px; ${marcado ? 'background:var(--gold); color:var(--gold-text); border-color:var(--gold);' : ''}">${marcado ? '✓ Acompanhando' : 'Acompanhar'}</button>` : ''}
+          </div>
         </div>
       `;
     }).join('');
@@ -393,9 +465,18 @@ function renderizarPainel() {
     document.getElementById('filtro-hist-curto').checked = e.target.checked;
     renderizarPainel();
   });
+  document.getElementById('filtro-marcados-inner').addEventListener('change', (e) => {
+    document.getElementById('filtro-marcados').checked = e.target.checked;
+    renderizarPainel();
+  });
   document.getElementById('filtro-busca-inner').addEventListener('input', (e) => {
     document.getElementById('filtro-busca').value = e.target.value;
     renderizarPainel();
+  });
+  document.querySelectorAll('.btn-check').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      alternarCheck(e.target.getAttribute('data-chave'));
+    });
   });
 }
 
@@ -412,6 +493,10 @@ async function carregarDados() {
 
     const resultado = Papa.parse(textoCsv, { header: true, skipEmptyLines: true });
     dadosCompletos = resultado.data;
+
+    await carregarChecks();
+    const mudouChecks = podarChecksAntigos();
+    if (mudouChecks) await salvarChecks();
 
     const agora = new Date();
     statusLine.textContent = 'Carregado às ' + agora.toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo' }) + ' (BRT)';
@@ -433,6 +518,7 @@ filtroState.innerHTML = `
   <input type="number" id="filtro-chance-min" value="50" style="display:none">
   <input type="checkbox" id="filtro-pendentes" style="display:none">
   <input type="checkbox" id="filtro-hist-curto" checked style="display:none">
+  <input type="checkbox" id="filtro-marcados" style="display:none">
   <input type="text" id="filtro-busca" value="" style="display:none">
 `;
 document.body.appendChild(filtroState);
