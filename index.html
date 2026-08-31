@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Painel IA Cantos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<style>
+  :root {
+    --bg: #0B1F17;
+    --panel: #122A20;
+    --card: #16332A;
+    --card-border: #234438;
+    --text-primary: #EDEFEA;
+    --text-secondary: #A9BDB2;
+    --text-muted: #6E8478;
+    --gold: #D9A544;
+    --gold-text: #2A1F0A;
+    --red: #C1554B;
+    --red-text: #FBE9E7;
+    --ring-track: #1D3D30;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text-primary);
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-variant-numeric: tabular-nums;
+    padding: 2rem 1.5rem 4rem;
+  }
+  .wrap { max-width: 980px; margin: 0 auto; }
+  h1 {
+    font-family: 'Oswald', sans-serif;
+    font-weight: 500;
+    font-size: 28px;
+    letter-spacing: 0.3px;
+    margin: 0 0 4px;
+  }
+  .sub { color: var(--text-secondary); font-size: 14px; margin: 0; }
+  .topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 2rem;
+    border-bottom: 1px solid var(--card-border);
+    padding-bottom: 1.25rem;
+  }
+  button {
+    font-family: 'IBM Plex Sans', sans-serif;
+    background: var(--card);
+    color: var(--text-primary);
+    border: 1px solid var(--card-border);
+    border-radius: 6px;
+    padding: 8px 14px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  button:hover { border-color: var(--gold); }
+  .status-line { font-size: 12px; color: var(--text-muted); margin-top: 6px; }
+
+  .rings {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 2rem;
+  }
+  .ring-card {
+    background: var(--panel);
+    border: 1px solid var(--card-border);
+    border-radius: 10px;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .ring-card svg { flex-shrink: 0; }
+  .ring-number {
+    font-family: 'Oswald', sans-serif;
+    font-size: 26px;
+    font-weight: 500;
+  }
+  .ring-label {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-top: 2px;
+    line-height: 1.3;
+  }
+
+  .controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    align-items: center;
+    background: var(--panel);
+    border: 1px solid var(--card-border);
+    border-radius: 10px;
+    padding: 14px 18px;
+    margin-bottom: 1.5rem;
+    font-size: 13px;
+  }
+  .controls label { display: flex; align-items: center; gap: 8px; color: var(--text-secondary); cursor: pointer; }
+  .controls input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--gold); }
+  .controls input[type="number"] {
+    width: 56px;
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    color: var(--text-primary);
+    border-radius: 4px;
+    padding: 4px 6px;
+    font-family: 'IBM Plex Sans', sans-serif;
+  }
+  .controls input[type="text"] {
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    color: var(--text-primary);
+    border-radius: 4px;
+    padding: 6px 10px;
+    font-family: 'IBM Plex Sans', sans-serif;
+    min-width: 180px;
+  }
+  .count-tag { margin-left: auto; color: var(--text-muted); font-size: 12px; }
+
+  .match {
+    display: grid;
+    grid-template-columns: 1fr auto auto auto;
+    gap: 18px;
+    align-items: center;
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-left: 3px solid var(--card-border);
+    border-radius: 8px;
+    padding: 14px 18px;
+    margin-bottom: 8px;
+  }
+  .match.vale { border-left-color: var(--gold); }
+  .match.nao-vale { border-left-color: var(--red); }
+  .match-teams { font-size: 15px; font-weight: 500; }
+  .match-teams .apontado { color: var(--gold); font-weight: 600; }
+  .match-meta .lado-apontado { color: var(--gold); }
+  .match-meta { font-size: 12px; color: var(--text-muted); margin-top: 3px; }
+  .match-stat { text-align: right; }
+  .match-stat-value { font-family: 'Oswald', sans-serif; font-size: 18px; }
+  .match-stat-label { font-size: 11px; color: var(--text-muted); }
+  .tag {
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .tag.vale { background: var(--gold); color: var(--gold-text); }
+  .tag.nao-vale { background: var(--red); color: var(--red-text); }
+  .tag.pendente { background: var(--ring-track); color: var(--text-secondary); }
+  .badge-lado {
+    display: inline-block;
+    font-size: 11px;
+    color: var(--text-secondary);
+    background: var(--ring-track);
+    border-radius: 4px;
+    padding: 2px 8px;
+    margin-top: 4px;
+  }
+  .badge-ve-alto {
+    display: inline-block;
+    font-size: 10px;
+    color: var(--gold);
+    border: 1px solid var(--gold);
+    border-radius: 4px;
+    padding: 1px 6px;
+    margin-top: 3px;
+  }
+
+  .empty, .loading, .error {
+    text-align: center;
+    color: var(--text-muted);
+    padding: 3rem 1rem;
+    font-size: 14px;
+  }
+  .error { color: var(--red); }
+
+  @media (max-width: 640px) {
+    .rings { grid-template-columns: 1fr; }
+    .match { grid-template-columns: 1fr; text-align: left; }
+    .match-stat { text-align: left; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <div>
+      <h1>Painel IA Cantos</h1>
+      <p class="sub">Escanteios no 1º tempo &mdash; ajuste por cruzamentos (v2)</p>
+    </div>
+    <div style="text-align:right;">
+      <button id="btn-refresh">Atualizar dados</button>
+      <div class="status-line" id="status-line">Carregando...</div>
+    </div>
+  </div>
+
+  <div id="content">
+    <div class="loading">Buscando dados do Gist...</div>
+  </div>
+
+</div>
+
+<script>
+const GIST_RAW_URL = "https://gist.githubusercontent.com/yzilleniumm/38dee4e466b9787f8ec9d4bce19dc163/raw/registro_leitura_facil.csv";
+
+let dadosCompletos = [];
+
+function parsePercentual(str) {
+  if (!str) return null;
+  const limpo = String(str).replace('%', '').trim();
+  const val = parseFloat(limpo);
+  return isNaN(val) ? null : val;
+}
+
+function criarAnelSVG(pct, cor) {
+  const pctSeguro = Math.max(0, Math.min(100, pct));
+  const raio = 30;
+  const circunferencia = 2 * Math.PI * raio;
+  const offset = circunferencia * (1 - pctSeguro / 100);
+  return `
+    <svg width="72" height="72" viewBox="0 0 72 72">
+      <circle cx="36" cy="36" r="${raio}" fill="none" stroke="var(--ring-track)" stroke-width="7"/>
+      <circle cx="36" cy="36" r="${raio}" fill="none" stroke="${cor}" stroke-width="7"
+        stroke-linecap="round" stroke-dasharray="${circunferencia}" stroke-dashoffset="${offset}"
+        transform="rotate(-90 36 36)"/>
+    </svg>
+  `;
+}
+
+function extrairLadoApontado(detalhes) {
+  if (!detalhes) return null;
+  const m = String(detalhes).match(/lado_apontado=(casa|visitante)/i);
+  return m ? m[1].toLowerCase() : null;
+}
+
+function interpretarDetalhes(detalhes) {
+  const texto = String(detalhes || "");
+  const matchLado = texto.match(/lado_apontado=(\w+)/);
+  const lado = matchLado ? matchLado[1] : null;
+  return {
+    lado: lado === "casa" ? "Casa" : (lado === "visitante" ? "Visitante" : null),
+    historicoCurto: texto.includes("histórico curto"),
+    veAlto: texto.includes("VE muito alto")
+  };
+}
+
+function formatarData(str) {
+  if (!str) return "";
+  const d = new Date(String(str).replace(' ', 'T'));
+  if (isNaN(d)) return str;
+  return d.toLocaleString('pt-BR', {
+    timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'
+  }) + ' (BRT)';
+}
+
+function renderizarPainel() {
+  const filtroValePena = document.getElementById('filtro-vale-pena').checked;
+  const filtroChanceMin = parseFloat(document.getElementById('filtro-chance-min').value) || 0;
+  const filtroSoPendentes = document.getElementById('filtro-pendentes').checked;
+  const filtroEsconderHistCurto = document.getElementById('filtro-hist-curto').checked;
+  const filtroBusca = document.getElementById('filtro-busca').value.trim().toLowerCase();
+
+  const pendentesTotal = dadosCompletos.filter(l => l["Aconteceu?"] === "Ainda não jogou");
+  const pendentesComValor = pendentesTotal.filter(l =>
+    l["Vale a pena? (cruzamentos)"] === "Vale a pena" &&
+    (parsePercentual(l["Chance (ajuste cruzamentos)"]) ?? 0) >= 50
+  );
+  const finalizadosComValor = dadosCompletos.filter(l =>
+    l["Vale a pena? (cruzamentos)"] === "Vale a pena" &&
+    (l["Aconteceu?"] === "Sim" || l["Aconteceu?"] === "Não")
+  );
+  const acertosFinalizados = finalizadosComValor.filter(l => l["Aconteceu?"] === "Sim");
+  const taxaAcerto = finalizadosComValor.length > 0
+    ? (acertosFinalizados.length / finalizadosComValor.length) * 100
+    : null;
+
+  const ringsHtml = `
+    <div class="rings">
+      <div class="ring-card">
+        ${criarAnelSVG(pendentesTotal.length > 0 ? (pendentesComValor.length / pendentesTotal.length) * 100 : 0, 'var(--gold)')}
+        <div>
+          <div class="ring-number">${pendentesComValor.length}</div>
+          <div class="ring-label">Jogos com valor<br>agora (pendentes)</div>
+        </div>
+      </div>
+      <div class="ring-card">
+        ${criarAnelSVG(taxaAcerto ?? 0, 'var(--gold)')}
+        <div>
+          <div class="ring-number">${taxaAcerto !== null ? taxaAcerto.toFixed(1) + '%' : '—'}</div>
+          <div class="ring-label">Taxa de acerto<br>histórica (v2)</div>
+        </div>
+      </div>
+      <div class="ring-card">
+        ${criarAnelSVG(dadosCompletos.length > 0 ? (finalizadosComValor.length / dadosCompletos.length) * 100 : 0, 'var(--gold)')}
+        <div>
+          <div class="ring-number">${dadosCompletos.length}</div>
+          <div class="ring-label">Jogos monitorados<br>no total</div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  let filtrados = dadosCompletos.filter(l => {
+    if (filtroValePena && l["Vale a pena? (cruzamentos)"] !== "Vale a pena") return false;
+    const chance = parsePercentual(l["Chance (ajuste cruzamentos)"]);
+    if (chance === null || chance < filtroChanceMin) return false;
+    if (filtroSoPendentes && l["Aconteceu?"] !== "Ainda não jogou") return false;
+    if (filtroBusca && !l["Jogo"].toLowerCase().includes(filtroBusca) && !l["Liga"].toLowerCase().includes(filtroBusca)) return false;
+    const info = interpretarDetalhes(l["Detalhes"]);
+    if (filtroEsconderHistCurto && info.historicoCurto) return false;
+    return true;
+  });
+
+  filtrados.sort((a, b) => new Date(a["Data"]) - new Date(b["Data"]));
+
+  const controlsHtml = `
+    <div class="controls">
+      <label><input type="checkbox" id="filtro-vale-pena-inner" ${filtroValePena ? 'checked' : ''}> Só "vale a pena" (cruzamentos)</label>
+      <label>Chance mínima <input type="number" id="filtro-chance-min-inner" value="${filtroChanceMin}" min="0" max="100" step="1">%</label>
+      <label><input type="checkbox" id="filtro-pendentes-inner" ${filtroSoPendentes ? 'checked' : ''}> Só jogos futuros</label>
+      <label><input type="checkbox" id="filtro-hist-curto-inner" ${filtroEsconderHistCurto ? 'checked' : ''}> Esconder times com histórico curto</label>
+      <input type="text" id="filtro-busca-inner" placeholder="Buscar time ou liga..." value="${filtroBusca}">
+      <span class="count-tag">${filtrados.length} de ${dadosCompletos.length} jogos</span>
+    </div>
+  `;
+
+  let listaHtml = '';
+  if (filtrados.length === 0) {
+    listaHtml = '<div class="empty">Nenhum jogo bate com esses filtros. Tenta baixar a chance mínima ou desmarcar algum filtro.</div>';
+  } else {
+    listaHtml = filtrados.map(l => {
+      const vale = l["Vale a pena? (cruzamentos)"] === "Vale a pena";
+      const aconteceu = l["Aconteceu?"];
+      let tagHtml = '';
+      if (aconteceu === "Ainda não jogou") {
+        tagHtml = '<span class="tag pendente">Ainda não jogou</span>';
+      } else if (aconteceu === "Sim") {
+        tagHtml = '<span class="tag vale">Bateu</span>';
+      } else if (aconteceu === "Não") {
+        tagHtml = '<span class="tag nao-vale">Não bateu</span>';
+      } else {
+        tagHtml = '<span class="tag pendente">Sem dado</span>';
+      }
+      const info = interpretarDetalhes(l["Detalhes"]);
+      return `
+        <div class="match ${vale ? 'vale' : 'nao-vale'}">
+          <div>
+            <div class="match-teams">${l["Jogo"]}</div>
+            <div class="match-meta">${l["Liga"]} &middot; ${formatarData(l["Data"])}</div>
+            ${info.lado ? `<div class="badge-lado">Lado apontado: ${info.lado}</div>` : ''}
+          </div>
+          <div class="match-stat">
+            <div class="match-stat-value">${l["Chance (ajuste cruzamentos)"] ?? '—'}</div>
+            <div class="match-stat-label">chance</div>
+          </div>
+          <div class="match-stat">
+            <div class="match-stat-value">${l["Valor esperado (cruzamentos)"] ?? '—'}</div>
+            <div class="match-stat-label">valor esperado</div>
+            ${info.veAlto ? `<div class="badge-ve-alto">VE alto</div>` : ''}
+          </div>
+          <div>${tagHtml}</div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  document.getElementById('content').innerHTML = ringsHtml + controlsHtml + listaHtml;
+
+  document.getElementById('filtro-vale-pena-inner').addEventListener('change', (e) => {
+    document.getElementById('filtro-vale-pena').checked = e.target.checked;
+    renderizarPainel();
+  });
+  document.getElementById('filtro-chance-min-inner').addEventListener('input', (e) => {
+    document.getElementById('filtro-chance-min').value = e.target.value;
+    renderizarPainel();
+  });
+  document.getElementById('filtro-pendentes-inner').addEventListener('change', (e) => {
+    document.getElementById('filtro-pendentes').checked = e.target.checked;
+    renderizarPainel();
+  });
+  document.getElementById('filtro-hist-curto-inner').addEventListener('change', (e) => {
+    document.getElementById('filtro-hist-curto').checked = e.target.checked;
+    renderizarPainel();
+  });
+  document.getElementById('filtro-busca-inner').addEventListener('input', (e) => {
+    document.getElementById('filtro-busca').value = e.target.value;
+    renderizarPainel();
+  });
+}
+
+async function carregarDados() {
+  const statusLine = document.getElementById('status-line');
+  const content = document.getElementById('content');
+  content.innerHTML = '<div class="loading">Buscando dados do Gist...</div>';
+  statusLine.textContent = 'Carregando...';
+
+  try {
+    const resp = await fetch(GIST_RAW_URL + '?t=' + Date.now());
+    if (!resp.ok) throw new Error('Status HTTP ' + resp.status);
+    const textoCsv = await resp.text();
+
+    const resultado = Papa.parse(textoCsv, { header: true, skipEmptyLines: true });
+    dadosCompletos = resultado.data;
+
+    const agora = new Date();
+    statusLine.textContent = 'Carregado às ' + agora.toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo' }) + ' (BRT)';
+
+    renderizarPainel();
+  } catch (erro) {
+    content.innerHTML = `<div class="error">Não consegui carregar os dados: ${erro.message}<br>Confere se o Gist ainda está público e se a URL está certa.</div>`;
+    statusLine.textContent = 'Falha ao carregar.';
+  }
+}
+
+document.getElementById('btn-refresh')?.addEventListener('click', carregarDados);
+
+document.addEventListener('DOMContentLoaded', () => {});
+
+const filtroState = document.createElement('div');
+filtroState.innerHTML = `
+  <input type="checkbox" id="filtro-vale-pena" checked style="display:none">
+  <input type="number" id="filtro-chance-min" value="50" style="display:none">
+  <input type="checkbox" id="filtro-pendentes" style="display:none">
+  <input type="checkbox" id="filtro-hist-curto" checked style="display:none">
+  <input type="text" id="filtro-busca" value="" style="display:none">
+`;
+document.body.appendChild(filtroState);
+
+carregarDados();
+</script>
+</body>
+</html>
