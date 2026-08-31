@@ -214,9 +214,7 @@
 <script>
 const GIST_RAW_URL = "https://gist.githubusercontent.com/yzilleniumm/38dee4e466b9787f8ec9d4bce19dc163/raw/registro_leitura_facil.csv";
 const CHECKS_RAW_URL = "https://gist.githubusercontent.com/yzilleniumm/38dee4e466b9787f8ec9d4bce19dc163/raw/checks.json";
-const GIST_ID = "38dee4e466b9787f8ec9d4bce19dc163";
-// Token com escopo APENAS "gist" -- de propósito público nesta página, só consegue mexer em Gists.
-const GIST_WRITE_TOKEN = "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";
+const CHECKS_PROXY_URL = "https://ia-cantos-checks-proxy.yzilleniumm.workers.dev/";
 
 let dadosCompletos = [];
 let checksData = {};
@@ -287,15 +285,14 @@ async function carregarChecks() {
 
 async function salvarChecks() {
   try {
-    const resp = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
-      method: 'PATCH',
-      headers: {
-        'Authorization': `token ${GIST_WRITE_TOKEN}`,
-        'Accept': 'application/vnd.github+json'
-      },
-      body: JSON.stringify({ files: { 'checks.json': { content: JSON.stringify(checksData) } } })
+    const resp = await fetch(CHECKS_PROXY_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(checksData)
     });
     if (!resp.ok) throw new Error('status ' + resp.status);
+    const resultado = await resp.json();
+    if (!resultado.ok) throw new Error('proxy retornou status ' + resultado.status);
     return true;
   } catch (erro) {
     console.error('Falha ao salvar checks:', erro.message);
