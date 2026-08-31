@@ -141,6 +141,8 @@
   .match.vale { border-left-color: var(--gold); }
   .match.nao-vale { border-left-color: var(--red); }
   .match-teams { font-size: 15px; font-weight: 500; }
+  .match-teams .apontado { color: var(--gold); font-weight: 600; }
+  .match-meta .lado-apontado { color: var(--gold); }
   .match-meta { font-size: 12px; color: var(--text-muted); margin-top: 3px; }
   .match-stat { text-align: right; }
   .match-stat-value { font-family: 'Oswald', sans-serif; font-size: 18px; }
@@ -155,6 +157,24 @@
   .tag.vale { background: var(--gold); color: var(--gold-text); }
   .tag.nao-vale { background: var(--red); color: var(--red-text); }
   .tag.pendente { background: var(--ring-track); color: var(--text-secondary); }
+  .badge-lado {
+    display: inline-block;
+    font-size: 11px;
+    color: var(--text-secondary);
+    background: var(--ring-track);
+    border-radius: 4px;
+    padding: 2px 8px;
+    margin-top: 4px;
+  }
+  .badge-ve-alto {
+    display: inline-block;
+    font-size: 10px;
+    color: var(--gold);
+    border: 1px solid var(--gold);
+    border-radius: 4px;
+    padding: 1px 6px;
+    margin-top: 3px;
+  }
 
   .empty, .loading, .error {
     text-align: center;
@@ -218,6 +238,23 @@ function criarAnelSVG(pct, cor) {
   `;
 }
 
+function extrairLadoApontado(detalhes) {
+  if (!detalhes) return null;
+  const m = String(detalhes).match(/lado_apontado=(casa|visitante)/i);
+  return m ? m[1].toLowerCase() : null;
+}
+
+function interpretarDetalhes(detalhes) {
+  const texto = String(detalhes || "");
+  const matchLado = texto.match(/lado_apontado=(\w+)/);
+  const lado = matchLado ? matchLado[1] : null;
+  return {
+    lado: lado === "casa" ? "Casa" : (lado === "visitante" ? "Visitante" : null),
+    historicoCurto: texto.includes("histórico curto"),
+    veAlto: texto.includes("VE muito alto")
+  };
+}
+
 function formatarData(str) {
   if (!str) return "";
   const d = new Date(String(str).replace(' ', 'T'));
@@ -231,6 +268,7 @@ function renderizarPainel() {
   const filtroValePena = document.getElementById('filtro-vale-pena').checked;
   const filtroChanceMin = parseFloat(document.getElementById('filtro-chance-min').value) || 0;
   const filtroSoPendentes = document.getElementById('filtro-pendentes').checked;
+  const filtroEsconderHistCurto = document.getElementById('filtro-hist-curto').checked;
   const filtroBusca = document.getElementById('filtro-busca').value.trim().toLowerCase();
 
   const pendentesTotal = dadosCompletos.filter(l => l["Aconteceu?"] === "Ainda não jogou");
@@ -279,6 +317,8 @@ function renderizarPainel() {
     if (chance === null || chance < filtroChanceMin) return false;
     if (filtroSoPendentes && l["Aconteceu?"] !== "Ainda não jogou") return false;
     if (filtroBusca && !l["Jogo"].toLowerCase().includes(filtroBusca) && !l["Liga"].toLowerCase().includes(filtroBusca)) return false;
+    const info = interpretarDetalhes(l["Detalhes"]);
+    if (filtroEsconderHistCurto && info.historicoCurto) return false;
     return true;
   });
 
@@ -289,6 +329,7 @@ function renderizarPainel() {
       <label><input type="checkbox" id="filtro-vale-pena-inner" ${filtroValePena ? 'checked' : ''}> Só "vale a pena" (cruzamentos)</label>
       <label>Chance mínima <input type="number" id="filtro-chance-min-inner" value="${filtroChanceMin}" min="0" max="100" step="1">%</label>
       <label><input type="checkbox" id="filtro-pendentes-inner" ${filtroSoPendentes ? 'checked' : ''}> Só jogos futuros</label>
+      <label><input type="checkbox" id="filtro-hist-curto-inner" ${filtroEsconderHistCurto ? 'checked' : ''}> Esconder times com histórico curto</label>
       <input type="text" id="filtro-busca-inner" placeholder="Buscar time ou liga..." value="${filtroBusca}">
       <span class="count-tag">${filtrados.length} de ${dadosCompletos.length} jogos</span>
     </div>
@@ -311,11 +352,13 @@ function renderizarPainel() {
       } else {
         tagHtml = '<span class="tag pendente">Sem dado</span>';
       }
+      const info = interpretarDetalhes(l["Detalhes"]);
       return `
         <div class="match ${vale ? 'vale' : 'nao-vale'}">
           <div>
             <div class="match-teams">${l["Jogo"]}</div>
             <div class="match-meta">${l["Liga"]} &middot; ${formatarData(l["Data"])}</div>
+            ${info.lado ? `<div class="badge-lado">Lado apontado: ${info.lado}</div>` : ''}
           </div>
           <div class="match-stat">
             <div class="match-stat-value">${l["Chance (ajuste cruzamentos)"] ?? '—'}</div>
@@ -324,6 +367,7 @@ function renderizarPainel() {
           <div class="match-stat">
             <div class="match-stat-value">${l["Valor esperado (cruzamentos)"] ?? '—'}</div>
             <div class="match-stat-label">valor esperado</div>
+            ${info.veAlto ? `<div class="badge-ve-alto">VE alto</div>` : ''}
           </div>
           <div>${tagHtml}</div>
         </div>
@@ -343,6 +387,10 @@ function renderizarPainel() {
   });
   document.getElementById('filtro-pendentes-inner').addEventListener('change', (e) => {
     document.getElementById('filtro-pendentes').checked = e.target.checked;
+    renderizarPainel();
+  });
+  document.getElementById('filtro-hist-curto-inner').addEventListener('change', (e) => {
+    document.getElementById('filtro-hist-curto').checked = e.target.checked;
     renderizarPainel();
   });
   document.getElementById('filtro-busca-inner').addEventListener('input', (e) => {
@@ -384,6 +432,7 @@ filtroState.innerHTML = `
   <input type="checkbox" id="filtro-vale-pena" checked style="display:none">
   <input type="number" id="filtro-chance-min" value="50" style="display:none">
   <input type="checkbox" id="filtro-pendentes" style="display:none">
+  <input type="checkbox" id="filtro-hist-curto" checked style="display:none">
   <input type="text" id="filtro-busca" value="" style="display:none">
 `;
 document.body.appendChild(filtroState);
