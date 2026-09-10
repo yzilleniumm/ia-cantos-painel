@@ -47,7 +47,7 @@
     align-items: flex-end;
     flex-wrap: wrap;
     gap: 12px;
-    margin-bottom: 2rem;
+    margin-bottom: 1.5rem;
     border-bottom: 1px solid var(--card-border);
     padding-bottom: 1.25rem;
   }
@@ -63,6 +63,42 @@
   }
   button:hover { border-color: var(--gold); }
   .status-line { font-size: 12px; color: var(--text-muted); margin-top: 6px; }
+
+  .mercado-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 1.5rem;
+  }
+  .mercado-tab {
+    flex: 1;
+    background: var(--panel);
+    border: 1px solid var(--card-border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    cursor: pointer;
+    text-align: left;
+    transition: border-color 0.15s;
+  }
+  .mercado-tab:hover { border-color: var(--gold); }
+  .mercado-tab.ativo { border-color: var(--gold); background: var(--card); }
+  .mercado-tab-title {
+    font-family: 'Oswald', sans-serif;
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--text-primary);
+  }
+  .mercado-tab-sub { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+  .mercado-tab.ativo .mercado-tab-title { color: var(--gold); }
+  .aviso-nao-confiavel {
+    background: rgba(193, 85, 75, 0.12);
+    border: 1px solid var(--red);
+    color: var(--red-text);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 12.5px;
+    margin-bottom: 1.5rem;
+    line-height: 1.5;
+  }
 
   .rings {
     display: grid;
@@ -186,6 +222,7 @@
 
   @media (max-width: 640px) {
     .rings { grid-template-columns: 1fr; }
+    .mercado-tabs { flex-direction: column; }
     .match { grid-template-columns: 1fr; text-align: left; }
     .match-stat { text-align: left; }
   }
@@ -197,11 +234,22 @@
   <div class="topbar">
     <div>
       <h1>Painel IA Cantos</h1>
-      <p class="sub">Escanteios no 1º tempo &mdash; ajuste por cruzamentos (v2)</p>
+      <p class="sub" id="subtitulo">Escanteios no 1º tempo</p>
     </div>
     <div style="text-align:right;">
       <button id="btn-refresh">Atualizar dados</button>
       <div class="status-line" id="status-line">Carregando...</div>
+    </div>
+  </div>
+
+  <div class="mercado-tabs">
+    <div class="mercado-tab ativo" id="tab-over" data-mercado="over">
+      <div class="mercado-tab-title">Over &mdash; Mais de 2,5</div>
+      <div class="mercado-tab-sub">Ajuste por cruzamentos (v2) &middot; times fortes</div>
+    </div>
+    <div class="mercado-tab" id="tab-under" data-mercado="under">
+      <div class="mercado-tab-title">Under &mdash; Menos de 3,5</div>
+      <div class="mercado-tab-sub">Modelo direto &middot; times fracos / cautelosos</div>
     </div>
   </div>
 
@@ -212,11 +260,36 @@
 </div>
 
 <script>
-const GIST_RAW_URL = "https://gist.githubusercontent.com/yzilleniumm/38dee4e466b9787f8ec9d4bce19dc163/raw/registro_leitura_facil.csv";
+const GIST_OVER_URL = "https://gist.githubusercontent.com/yzilleniumm/38dee4e466b9787f8ec9d4bce19dc163/raw/registro_leitura_facil.csv";
+const GIST_UNDER_URL = "https://gist.githubusercontent.com/yzilleniumm/38dee4e466b9787f8ec9d4bce19dc163/raw/registro_leitura_facil_menos35.csv";
 const CHECKS_RAW_URL = "https://gist.githubusercontent.com/yzilleniumm/38dee4e466b9787f8ec9d4bce19dc163/raw/checks.json";
 const CHECKS_PROXY_URL = "https://ia-cantos-checks-proxy.yzilleniumm.workers.dev/";
 
-let dadosCompletos = [];
+// Config por mercado: nomes de coluna variam entre o registro Over (tem v1/v2)
+// e o registro Under (só tem o modelo direto, sem colunas de ajuste)
+const CONFIG_MERCADO = {
+  over: {
+    url: GIST_OVER_URL,
+    colChance: "Chance (ajuste cruzamentos) [NÃO CONFIÁVEL]",
+    colValePena: "Vale a pena? (cruzamentos)",
+    colValorEsperado: "Valor esperado (cruzamentos) [NÃO CONFIÁVEL]",
+    subtitulo: "Escanteios no 1º tempo &mdash; mandante/visitante com Mais de 2,5 (ajuste por cruzamentos, NÃO validado)",
+    ringLabel: "Taxa de acerto<br>histórica (Over)",
+    avisoConfiabilidade: "O ajuste por cruzamentos (v2) foi testado com 82 casos prospectivos reais e NÃO se sustentou (Brier Score pior que o modelo original, bootstrap de 13%). Os números aqui vêm da coluna de ajuste porque é o que já estava configurado, mas trate como não confiável até nova validação."
+  },
+  under: {
+    url: GIST_UNDER_URL,
+    colChance: "Chance (menos de 3.5)",
+    colValePena: "Vale a pena?",
+    colValorEsperado: "Valor esperado",
+    subtitulo: "Escanteios no 1º tempo &mdash; mandante/visitante com Menos de 3,5 (modelo validado: bootstrap 99,8% mandante / 90,8% visitante)",
+    ringLabel: "Taxa de acerto<br>histórica (Under)",
+    avisoConfiabilidade: null
+  }
+};
+
+let mercadoAtivo = "over";
+let dadosPorMercado = { over: [], under: [] };
 let checksData = {};
 
 function chaveJogo(l) {
@@ -243,12 +316,6 @@ function criarAnelSVG(pct, cor) {
         transform="rotate(-90 36 36)"/>
     </svg>
   `;
-}
-
-function extrairLadoApontado(detalhes) {
-  if (!detalhes) return null;
-  const m = String(detalhes).match(/lado_apontado=(casa|visitante)/i);
-  return m ? m[1].toLowerCase() : null;
 }
 
 function interpretarDetalhes(detalhes) {
@@ -301,9 +368,11 @@ async function salvarChecks() {
 }
 
 function podarChecksAntigos() {
-  const chavesValidas = new Set(
-    dadosCompletos.filter(l => l["Aconteceu?"] === "Ainda não jogou").map(chaveJogo)
-  );
+  // Considera pendentes dos DOIS mercados (a chave inclui jogo+data, então não colide)
+  const chavesValidas = new Set([
+    ...dadosPorMercado.over.filter(l => l["Aconteceu?"] === "Ainda não jogou").map(chaveJogo),
+    ...dadosPorMercado.under.filter(l => l["Aconteceu?"] === "Ainda não jogou").map(chaveJogo)
+  ]);
   let mudou = false;
   for (const chave of Object.keys(checksData)) {
     if (!chavesValidas.has(chave)) {
@@ -324,7 +393,18 @@ async function alternarCheck(chave) {
   await salvarChecks();
 }
 
+function trocarMercado(mercado) {
+  mercadoAtivo = mercado;
+  document.getElementById('tab-over').classList.toggle('ativo', mercado === 'over');
+  document.getElementById('tab-under').classList.toggle('ativo', mercado === 'under');
+  document.getElementById('subtitulo').innerHTML = CONFIG_MERCADO[mercado].subtitulo;
+  renderizarPainel();
+}
+
 function renderizarPainel() {
+  const cfg = CONFIG_MERCADO[mercadoAtivo];
+  const dadosCompletos = dadosPorMercado[mercadoAtivo];
+
   const filtroValePena = document.getElementById('filtro-vale-pena').checked;
   const filtroChanceMin = parseFloat(document.getElementById('filtro-chance-min').value) || 0;
   const filtroSoPendentes = document.getElementById('filtro-pendentes').checked;
@@ -332,19 +412,28 @@ function renderizarPainel() {
   const filtroSoMarcados = document.getElementById('filtro-marcados').checked;
   const filtroBusca = document.getElementById('filtro-busca').value.trim().toLowerCase();
 
+  if (dadosCompletos.length === 0) {
+    document.getElementById('content').innerHTML = `<div class="empty">Ainda não há dados para este mercado. Tenta atualizar em alguns instantes.</div>`;
+    return;
+  }
+
   const pendentesTotal = dadosCompletos.filter(l => l["Aconteceu?"] === "Ainda não jogou");
   const pendentesComValor = pendentesTotal.filter(l =>
-    l["Vale a pena? (cruzamentos)"] === "Vale a pena" &&
-    (parsePercentual(l["Chance (ajuste cruzamentos)"]) ?? 0) >= 50
+    l[cfg.colValePena] === "Vale a pena" &&
+    (parsePercentual(l[cfg.colChance]) ?? 0) >= 50
   );
   const finalizadosComValor = dadosCompletos.filter(l =>
-    l["Vale a pena? (cruzamentos)"] === "Vale a pena" &&
+    l[cfg.colValePena] === "Vale a pena" &&
     (l["Aconteceu?"] === "Sim" || l["Aconteceu?"] === "Não")
   );
   const acertosFinalizados = finalizadosComValor.filter(l => l["Aconteceu?"] === "Sim");
   const taxaAcerto = finalizadosComValor.length > 0
     ? (acertosFinalizados.length / finalizadosComValor.length) * 100
     : null;
+
+  const avisoHtml = cfg.avisoConfiabilidade
+    ? `<div class="aviso-nao-confiavel">⚠️ ${cfg.avisoConfiabilidade}</div>`
+    : '';
 
   const ringsHtml = `
     <div class="rings">
@@ -359,7 +448,7 @@ function renderizarPainel() {
         ${criarAnelSVG(taxaAcerto ?? 0, 'var(--gold)')}
         <div>
           <div class="ring-number">${taxaAcerto !== null ? taxaAcerto.toFixed(1) + '%' : '—'}</div>
-          <div class="ring-label">Taxa de acerto<br>histórica (v2)</div>
+          <div class="ring-label">${cfg.ringLabel}</div>
         </div>
       </div>
       <div class="ring-card">
@@ -373,8 +462,8 @@ function renderizarPainel() {
   `;
 
   let filtrados = dadosCompletos.filter(l => {
-    if (filtroValePena && l["Vale a pena? (cruzamentos)"] !== "Vale a pena") return false;
-    const chance = parsePercentual(l["Chance (ajuste cruzamentos)"]);
+    if (filtroValePena && l[cfg.colValePena] !== "Vale a pena") return false;
+    const chance = parsePercentual(l[cfg.colChance]);
     if (chance === null || chance < filtroChanceMin) return false;
     if (filtroSoPendentes && l["Aconteceu?"] !== "Ainda não jogou") return false;
     if (filtroBusca && !l["Jogo"].toLowerCase().includes(filtroBusca) && !l["Liga"].toLowerCase().includes(filtroBusca)) return false;
@@ -388,7 +477,7 @@ function renderizarPainel() {
 
   const controlsHtml = `
     <div class="controls">
-      <label><input type="checkbox" id="filtro-vale-pena-inner" ${filtroValePena ? 'checked' : ''}> Só "vale a pena" (cruzamentos)</label>
+      <label><input type="checkbox" id="filtro-vale-pena-inner" ${filtroValePena ? 'checked' : ''}> Só "vale a pena"</label>
       <label>Chance mínima <input type="number" id="filtro-chance-min-inner" value="${filtroChanceMin}" min="0" max="100" step="1">%</label>
       <label><input type="checkbox" id="filtro-pendentes-inner" ${filtroSoPendentes ? 'checked' : ''}> Só jogos futuros</label>
       <label><input type="checkbox" id="filtro-hist-curto-inner" ${filtroEsconderHistCurto ? 'checked' : ''}> Esconder times com histórico curto</label>
@@ -403,7 +492,7 @@ function renderizarPainel() {
     listaHtml = '<div class="empty">Nenhum jogo bate com esses filtros. Tenta baixar a chance mínima ou desmarcar algum filtro.</div>';
   } else {
     listaHtml = filtrados.map(l => {
-      const vale = l["Vale a pena? (cruzamentos)"] === "Vale a pena";
+      const vale = l[cfg.colValePena] === "Vale a pena";
       const aconteceu = l["Aconteceu?"];
       let tagHtml = '';
       if (aconteceu === "Ainda não jogou") {
@@ -427,11 +516,11 @@ function renderizarPainel() {
             ${info.lado ? `<div class="badge-lado">Lado apontado: ${info.lado}</div>` : ''}
           </div>
           <div class="match-stat">
-            <div class="match-stat-value">${l["Chance (ajuste cruzamentos)"] ?? '—'}</div>
+            <div class="match-stat-value">${l[cfg.colChance] ?? '—'}</div>
             <div class="match-stat-label">chance</div>
           </div>
           <div class="match-stat">
-            <div class="match-stat-value">${l["Valor esperado (cruzamentos)"] ?? '—'}</div>
+            <div class="match-stat-value">${l[cfg.colValorEsperado] ?? '—'}</div>
             <div class="match-stat-label">valor esperado</div>
             ${info.veAlto ? `<div class="badge-ve-alto">VE alto</div>` : ''}
           </div>
@@ -444,7 +533,7 @@ function renderizarPainel() {
     }).join('');
   }
 
-  document.getElementById('content').innerHTML = ringsHtml + controlsHtml + listaHtml;
+  document.getElementById('content').innerHTML = avisoHtml + ringsHtml + controlsHtml + listaHtml;
 
   document.getElementById('filtro-vale-pena-inner').addEventListener('change', (e) => {
     document.getElementById('filtro-vale-pena').checked = e.target.checked;
@@ -477,6 +566,14 @@ function renderizarPainel() {
   });
 }
 
+async function buscarCsv(url) {
+  const resp = await fetch(url + '?t=' + Date.now());
+  if (!resp.ok) throw new Error('Status HTTP ' + resp.status + ' em ' + url);
+  const texto = await resp.text();
+  const resultado = Papa.parse(texto, { header: true, skipEmptyLines: true });
+  return resultado.data;
+}
+
 async function carregarDados() {
   const statusLine = document.getElementById('status-line');
   const content = document.getElementById('content');
@@ -484,12 +581,20 @@ async function carregarDados() {
   statusLine.textContent = 'Carregando...';
 
   try {
-    const resp = await fetch(GIST_RAW_URL + '?t=' + Date.now());
-    if (!resp.ok) throw new Error('Status HTTP ' + resp.status);
-    const textoCsv = await resp.text();
+    const [dadosOver, dadosUnder] = await Promise.allSettled([
+      buscarCsv(GIST_OVER_URL),
+      buscarCsv(GIST_UNDER_URL)
+    ]);
 
-    const resultado = Papa.parse(textoCsv, { header: true, skipEmptyLines: true });
-    dadosCompletos = resultado.data;
+    dadosPorMercado.over = dadosOver.status === 'fulfilled' ? dadosOver.value : [];
+    dadosPorMercado.under = dadosUnder.status === 'fulfilled' ? dadosUnder.value : [];
+
+    if (dadosOver.status === 'rejected') console.warn('Falha ao carregar Over:', dadosOver.reason.message);
+    if (dadosUnder.status === 'rejected') console.warn('Falha ao carregar Under:', dadosUnder.reason.message);
+
+    if (dadosOver.status === 'rejected' && dadosUnder.status === 'rejected') {
+      throw new Error('Não consegui carregar nenhum dos dois mercados.');
+    }
 
     await carregarChecks();
     const mudouChecks = podarChecksAntigos();
@@ -500,14 +605,14 @@ async function carregarDados() {
 
     renderizarPainel();
   } catch (erro) {
-    content.innerHTML = `<div class="error">Não consegui carregar os dados: ${erro.message}<br>Confere se o Gist ainda está público e se a URL está certa.</div>`;
+    content.innerHTML = `<div class="error">Não consegui carregar os dados: ${erro.message}<br>Confere se o Gist ainda está público e se as URLs estão certas.</div>`;
     statusLine.textContent = 'Falha ao carregar.';
   }
 }
 
 document.getElementById('btn-refresh')?.addEventListener('click', carregarDados);
-
-document.addEventListener('DOMContentLoaded', () => {});
+document.getElementById('tab-over').addEventListener('click', () => trocarMercado('over'));
+document.getElementById('tab-under').addEventListener('click', () => trocarMercado('under'));
 
 const filtroState = document.createElement('div');
 filtroState.innerHTML = `
