@@ -245,7 +245,7 @@
   <div class="mercado-tabs">
     <div class="mercado-tab ativo" id="tab-over" data-mercado="over">
       <div class="mercado-tab-title">Over &mdash; Mais de 2,5</div>
-      <div class="mercado-tab-sub">Ajuste por cruzamentos (v2) &middot; times fortes</div>
+      <div class="mercado-tab-sub">Modelo original &middot; times fortes</div>
     </div>
     <div class="mercado-tab" id="tab-under" data-mercado="under">
       <div class="mercado-tab-title">Under &mdash; Menos de 3,5</div>
@@ -270,12 +270,12 @@ const CHECKS_PROXY_URL = "https://ia-cantos-checks-proxy.yzilleniumm.workers.dev
 const CONFIG_MERCADO = {
   over: {
     url: GIST_OVER_URL,
-    colChance: "Chance (ajuste cruzamentos) [NÃO CONFIÁVEL]",
-    colValePena: "Vale a pena? (cruzamentos)",
-    colValorEsperado: "Valor esperado (cruzamentos) [NÃO CONFIÁVEL]",
-    subtitulo: "Escanteios no 1º tempo &mdash; mandante/visitante com Mais de 2,5 (ajuste por cruzamentos, NÃO validado)",
+    colChance: "Chance (mais de 2.5)",
+    colValePena: "Vale a pena?",
+    colValorEsperado: "Valor esperado",
+    subtitulo: "Escanteios no 1º tempo &mdash; mandante/visitante com Mais de 2,5 (modelo original)",
     ringLabel: "Taxa de acerto<br>histórica (Over)",
-    avisoConfiabilidade: "O ajuste por cruzamentos (v2) foi testado com 82 casos prospectivos reais e NÃO se sustentou (Brier Score pior que o modelo original, bootstrap de 13%). Os números aqui vêm da coluna de ajuste porque é o que já estava configurado, mas trate como não confiável até nova validação."
+    avisoConfiabilidade: null
   },
   under: {
     url: GIST_UNDER_URL,
