@@ -301,6 +301,11 @@ function parsePercentual(str) {
   return isNaN(val) ? null : val;
 }
 
+function normalizarTexto(str) {
+  if (!str) return '';
+  return String(str).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+}
+
 function criarAnelSVG(pct, cor) {
   const pctSeguro = Math.max(0, Math.min(100, pct));
   const raio = 30;
@@ -367,8 +372,8 @@ async function salvarChecks() {
 
 function podarChecksAntigos() {
   const chavesValidas = new Set([
-    ...dadosPorMercado.over.filter(l => l["Aconteceu?"] === "Ainda não jogou").map(chaveJogo),
-    ...dadosPorMercado.under.filter(l => l["Aconteceu?"] === "Ainda não jogou").map(chaveJogo)
+    ...dadosPorMercado.over.filter(l => normalizarTexto(l["Aconteceu?"]) === normalizarTexto("Ainda não jogou")).map(chaveJogo),
+    ...dadosPorMercado.under.filter(l => normalizarTexto(l["Aconteceu?"]) === normalizarTexto("Ainda não jogou")).map(chaveJogo)
   ]);
   let mudou = false;
   for (const chave of Object.keys(checksData)) {
@@ -414,16 +419,16 @@ function renderizarPainel() {
     return;
   }
 
-  const pendentesTotal = dadosCompletos.filter(l => l["Aconteceu?"] === "Ainda não jogou");
+  const pendentesTotal = dadosCompletos.filter(l => normalizarTexto(l["Aconteceu?"]) === normalizarTexto("Ainda não jogou"));
   const pendentesComValor = pendentesTotal.filter(l =>
-    l[cfg.colValePena] === "Vale a pena" &&
+    normalizarTexto(l[cfg.colValePena]) === normalizarTexto("Vale a pena") &&
     (parsePercentual(l[cfg.colChance]) ?? 0) >= 50
   );
   const finalizadosComValor = dadosCompletos.filter(l =>
-    l[cfg.colValePena] === "Vale a pena" &&
-    (l["Aconteceu?"] === "Sim" || l["Aconteceu?"] === "Não")
+    normalizarTexto(l[cfg.colValePena]) === normalizarTexto("Vale a pena") &&
+    (normalizarTexto(l["Aconteceu?"]) === normalizarTexto("Sim") || normalizarTexto(l["Aconteceu?"]) === normalizarTexto("Não"))
   );
-  const acertosFinalizados = finalizadosComValor.filter(l => l["Aconteceu?"] === "Sim");
+  const acertosFinalizados = finalizadosComValor.filter(l => normalizarTexto(l["Aconteceu?"]) === normalizarTexto("Sim"));
   const taxaAcerto = finalizadosComValor.length > 0
     ? (acertosFinalizados.length / finalizadosComValor.length) * 100
     : null;
@@ -459,10 +464,10 @@ function renderizarPainel() {
   `;
 
   let filtrados = dadosCompletos.filter(l => {
-    if (filtroValePena && l[cfg.colValePena] !== "Vale a pena") return false;
+    if (filtroValePena && normalizarTexto(l[cfg.colValePena]) !== normalizarTexto("Vale a pena")) return false;
     const chance = parsePercentual(l[cfg.colChance]);
     if (chance === null || chance < filtroChanceMin) return false;
-    if (filtroSoPendentes && l["Aconteceu?"] !== "Ainda não jogou") return false;
+    if (filtroSoPendentes && normalizarTexto(l["Aconteceu?"]) !== normalizarTexto("Ainda não jogou")) return false;
     if (filtroBusca && !l["Jogo"].toLowerCase().includes(filtroBusca) && !l["Liga"].toLowerCase().includes(filtroBusca)) return false;
     const info = interpretarDetalhes(l["Detalhes"]);
     if (filtroEsconderHistCurto && info.historicoCurto) return false;
@@ -489,14 +494,14 @@ function renderizarPainel() {
     listaHtml = '<div class="empty">Nenhum jogo bate com esses filtros. Tenta baixar a chance mínima ou desmarcar algum filtro.</div>';
   } else {
     listaHtml = filtrados.map(l => {
-      const vale = l[cfg.colValePena] === "Vale a pena";
+      const vale = normalizarTexto(l[cfg.colValePena]) === normalizarTexto("Vale a pena");
       const aconteceu = l["Aconteceu?"];
       let tagHtml = '';
-      if (aconteceu === "Ainda não jogou") {
+      if (normalizarTexto(aconteceu) === normalizarTexto("Ainda não jogou")) {
         tagHtml = '<span class="tag pendente">Ainda não jogou</span>';
-      } else if (aconteceu === "Sim") {
+      } else if (normalizarTexto(aconteceu) === normalizarTexto("Sim")) {
         tagHtml = '<span class="tag vale">Bateu</span>';
-      } else if (aconteceu === "Não") {
+      } else if (normalizarTexto(aconteceu) === normalizarTexto("Não")) {
         tagHtml = '<span class="tag nao-vale">Não bateu</span>';
       } else {
         tagHtml = '<span class="tag pendente">Sem dado</span>';
@@ -504,7 +509,7 @@ function renderizarPainel() {
       const info = interpretarDetalhes(l["Detalhes"]);
       const chave = chaveJogo(l);
       const marcado = !!checksData[chave];
-      const mostrarCheck = aconteceu === "Ainda não jogou";
+      const mostrarCheck = normalizarTexto(aconteceu) === normalizarTexto("Ainda não jogou");
       return `
         <div class="match ${vale ? 'vale' : 'nao-vale'}">
           <div>
