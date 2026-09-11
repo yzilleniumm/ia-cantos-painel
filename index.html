@@ -245,7 +245,7 @@
   <div class="mercado-tabs">
     <div class="mercado-tab ativo" id="tab-over" data-mercado="over">
       <div class="mercado-tab-title">Over &mdash; Mais de 2,5</div>
-      <div class="mercado-tab-sub">Ajuste por cruzamentos (v2) &middot; times fortes</div>
+      <div class="mercado-tab-sub">Modelo original &middot; times fortes</div>
     </div>
     <div class="mercado-tab" id="tab-under" data-mercado="under">
       <div class="mercado-tab-title">Under &mdash; Menos de 3,5</div>
@@ -265,17 +265,15 @@ const GIST_UNDER_URL = "https://gist.githubusercontent.com/yzilleniumm/38dee4e46
 const CHECKS_RAW_URL = "https://gist.githubusercontent.com/yzilleniumm/38dee4e466b9787f8ec9d4bce19dc163/raw/checks.json";
 const CHECKS_PROXY_URL = "https://ia-cantos-checks-proxy.yzilleniumm.workers.dev/";
 
-// Config por mercado: nomes de coluna variam entre o registro Over (tem v1/v2)
-// e o registro Under (só tem o modelo direto, sem colunas de ajuste)
 const CONFIG_MERCADO = {
   over: {
     url: GIST_OVER_URL,
-    colChance: "Chance (ajuste cruzamentos) [NÃO CONFIÁVEL]",
-    colValePena: "Vale a pena? (cruzamentos)",
-    colValorEsperado: "Valor esperado (cruzamentos) [NÃO CONFIÁVEL]",
-    subtitulo: "Escanteios no 1º tempo &mdash; mandante/visitante com Mais de 2,5 (ajuste por cruzamentos, NÃO validado)",
+    colChance: "Chance (mais de 2.5)",
+    colValePena: "Vale a pena?",
+    colValorEsperado: "Valor esperado",
+    subtitulo: "Escanteios no 1º tempo &mdash; mandante/visitante com Mais de 2,5 (modelo original)",
     ringLabel: "Taxa de acerto<br>histórica (Over)",
-    avisoConfiabilidade: "O ajuste por cruzamentos (v2) foi testado com 82 casos prospectivos reais e NÃO se sustentou (Brier Score pior que o modelo original, bootstrap de 13%). Os números aqui vêm da coluna de ajuste porque é o que já estava configurado, mas trate como não confiável até nova validação."
+    avisoConfiabilidade: null
   },
   under: {
     url: GIST_UNDER_URL,
@@ -368,7 +366,6 @@ async function salvarChecks() {
 }
 
 function podarChecksAntigos() {
-  // Considera pendentes dos DOIS mercados (a chave inclui jogo+data, então não colide)
   const chavesValidas = new Set([
     ...dadosPorMercado.over.filter(l => l["Aconteceu?"] === "Ainda não jogou").map(chaveJogo),
     ...dadosPorMercado.under.filter(l => l["Aconteceu?"] === "Ainda não jogou").map(chaveJogo)
