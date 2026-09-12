@@ -405,7 +405,8 @@ function trocarMercado(mercado) {
   document.getElementById('tab-over').classList.toggle('ativo', mercado === 'over');
   document.getElementById('tab-under').classList.toggle('ativo', mercado === 'under');
   document.getElementById('subtitulo').innerHTML = CONFIG_MERCADO[mercado].subtitulo;
-  document.getElementById('controles-area').innerHTML = '';
+  const areaControles = document.getElementById('controles-area');
+  if (areaControles) areaControles.innerHTML = '';
   renderizarPainel();
 }
 
@@ -468,8 +469,8 @@ function atualizarIndicadores() {
     </div>
   `;
 
-  document.getElementById('aviso-area').innerHTML = avisoHtml;
-  document.getElementById('rings-area').innerHTML = ringsHtml;
+  const elAviso = document.getElementById('aviso-area'); if (elAviso) elAviso.innerHTML = avisoHtml;
+  const elRings = document.getElementById('rings-area'); if (elRings) elRings.innerHTML = ringsHtml;
 }
 
 function renderizarControlesEIndicadores() {
@@ -505,7 +506,7 @@ function renderizarControlesEIndicadores() {
     </div>
   `;
 
-  document.getElementById('controles-area').innerHTML = controlsHtml;
+  const elControles = document.getElementById('controles-area'); if (elControles) elControles.innerHTML = controlsHtml;
 
   document.getElementById('filtro-vale-pena-inner').addEventListener('change', (e) => {
     document.getElementById('filtro-vale-pena').checked = e.target.checked;
@@ -608,7 +609,7 @@ function renderizarLista() {
     }).join('');
   }
 
-  document.getElementById('lista-area').innerHTML = listaHtml;
+  const elLista = document.getElementById('lista-area'); if (elLista) elLista.innerHTML = listaHtml;
 
   document.querySelectorAll('.btn-check').forEach(btn => {
     btn.addEventListener('click', (e) => {
