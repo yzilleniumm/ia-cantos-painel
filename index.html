@@ -254,7 +254,12 @@
   </div>
 
   <div id="content">
-    <div class="loading">Buscando dados do Gist...</div>
+    <div id="aviso-area"></div>
+    <div id="rings-area"></div>
+    <div id="controles-area"></div>
+    <div id="lista-area">
+      <div class="loading">Buscando dados do Gist...</div>
+    </div>
   </div>
 
 </div>
@@ -400,24 +405,24 @@ function trocarMercado(mercado) {
   document.getElementById('tab-over').classList.toggle('ativo', mercado === 'over');
   document.getElementById('tab-under').classList.toggle('ativo', mercado === 'under');
   document.getElementById('subtitulo').innerHTML = CONFIG_MERCADO[mercado].subtitulo;
+  document.getElementById('controles-area').innerHTML = '';
   renderizarPainel();
 }
 
 function renderizarPainel() {
+  const jaExisteControles = document.getElementById('filtro-busca-inner');
+  if (!jaExisteControles) {
+    renderizarControlesEIndicadores();
+  } else {
+    atualizarIndicadores();
+  }
+  renderizarLista();
+}
+
+function atualizarIndicadores() {
   const cfg = CONFIG_MERCADO[mercadoAtivo];
   const dadosCompletos = dadosPorMercado[mercadoAtivo];
-
-  const filtroValePena = document.getElementById('filtro-vale-pena').checked;
-  const filtroChanceMin = parseFloat(document.getElementById('filtro-chance-min').value) || 0;
-  const filtroSoPendentes = document.getElementById('filtro-pendentes').checked;
-  const filtroEsconderHistCurto = document.getElementById('filtro-hist-curto').checked;
-  const filtroSoMarcados = document.getElementById('filtro-marcados').checked;
-  const filtroBusca = document.getElementById('filtro-busca').value.trim().toLowerCase();
-
-  if (dadosCompletos.length === 0) {
-    document.getElementById('content').innerHTML = `<div class="empty">Ainda não há dados para este mercado. Tenta atualizar em alguns instantes.</div>`;
-    return;
-  }
+  if (dadosCompletos.length === 0) return;
 
   const pendentesTotal = dadosCompletos.filter(l => normalizarTexto(l["Aconteceu?"]) === normalizarTexto("Ainda não jogou"));
   const pendentesComValor = pendentesTotal.filter(l =>
@@ -463,6 +468,83 @@ function renderizarPainel() {
     </div>
   `;
 
+  document.getElementById('aviso-area').innerHTML = avisoHtml;
+  document.getElementById('rings-area').innerHTML = ringsHtml;
+}
+
+function renderizarControlesEIndicadores() {
+  const cfg = CONFIG_MERCADO[mercadoAtivo];
+  const dadosCompletos = dadosPorMercado[mercadoAtivo];
+
+  if (dadosCompletos.length === 0) {
+    document.getElementById('aviso-area').innerHTML = '';
+    document.getElementById('rings-area').innerHTML = '';
+    document.getElementById('controles-area').innerHTML = '';
+    document.getElementById('lista-area').innerHTML = `<div class="empty">Ainda não há dados para este mercado. Tenta atualizar em alguns instantes.</div>`;
+    return;
+  }
+
+  atualizarIndicadores();
+
+  const filtroValePena = document.getElementById('filtro-vale-pena').checked;
+  const filtroChanceMin = parseFloat(document.getElementById('filtro-chance-min').value) || 0;
+  const filtroSoPendentes = document.getElementById('filtro-pendentes').checked;
+  const filtroEsconderHistCurto = document.getElementById('filtro-hist-curto').checked;
+  const filtroSoMarcados = document.getElementById('filtro-marcados').checked;
+  const filtroBusca = document.getElementById('filtro-busca').value;
+
+  const controlsHtml = `
+    <div class="controls">
+      <label><input type="checkbox" id="filtro-vale-pena-inner" ${filtroValePena ? 'checked' : ''}> Só "vale a pena"</label>
+      <label>Chance mínima <input type="number" id="filtro-chance-min-inner" value="${filtroChanceMin}" min="0" max="100" step="1">%</label>
+      <label><input type="checkbox" id="filtro-pendentes-inner" ${filtroSoPendentes ? 'checked' : ''}> Só jogos futuros</label>
+      <label><input type="checkbox" id="filtro-hist-curto-inner" ${filtroEsconderHistCurto ? 'checked' : ''}> Esconder times com histórico curto</label>
+      <label><input type="checkbox" id="filtro-marcados-inner" ${filtroSoMarcados ? 'checked' : ''}> Mostrar só marcados</label>
+      <input type="text" id="filtro-busca-inner" placeholder="Buscar time ou liga..." value="${filtroBusca}">
+      <span class="count-tag" id="count-tag-span"></span>
+    </div>
+  `;
+
+  document.getElementById('controles-area').innerHTML = controlsHtml;
+
+  document.getElementById('filtro-vale-pena-inner').addEventListener('change', (e) => {
+    document.getElementById('filtro-vale-pena').checked = e.target.checked;
+    renderizarLista();
+  });
+  document.getElementById('filtro-chance-min-inner').addEventListener('input', (e) => {
+    document.getElementById('filtro-chance-min').value = e.target.value;
+    renderizarLista();
+  });
+  document.getElementById('filtro-pendentes-inner').addEventListener('change', (e) => {
+    document.getElementById('filtro-pendentes').checked = e.target.checked;
+    renderizarLista();
+  });
+  document.getElementById('filtro-hist-curto-inner').addEventListener('change', (e) => {
+    document.getElementById('filtro-hist-curto').checked = e.target.checked;
+    renderizarLista();
+  });
+  document.getElementById('filtro-marcados-inner').addEventListener('change', (e) => {
+    document.getElementById('filtro-marcados').checked = e.target.checked;
+    renderizarLista();
+  });
+  document.getElementById('filtro-busca-inner').addEventListener('input', (e) => {
+    document.getElementById('filtro-busca').value = e.target.value;
+    renderizarLista();
+  });
+}
+
+function renderizarLista() {
+  const cfg = CONFIG_MERCADO[mercadoAtivo];
+  const dadosCompletos = dadosPorMercado[mercadoAtivo];
+  if (dadosCompletos.length === 0) return;
+
+  const filtroValePena = document.getElementById('filtro-vale-pena').checked;
+  const filtroChanceMin = parseFloat(document.getElementById('filtro-chance-min').value) || 0;
+  const filtroSoPendentes = document.getElementById('filtro-pendentes').checked;
+  const filtroEsconderHistCurto = document.getElementById('filtro-hist-curto').checked;
+  const filtroSoMarcados = document.getElementById('filtro-marcados').checked;
+  const filtroBusca = document.getElementById('filtro-busca').value.trim().toLowerCase();
+
   let filtrados = dadosCompletos.filter(l => {
     if (filtroValePena && normalizarTexto(l[cfg.colValePena]) !== normalizarTexto("Vale a pena")) return false;
     const chance = parsePercentual(l[cfg.colChance]);
@@ -477,17 +559,8 @@ function renderizarPainel() {
 
   filtrados.sort((a, b) => new Date(a["Data"]) - new Date(b["Data"]));
 
-  const controlsHtml = `
-    <div class="controls">
-      <label><input type="checkbox" id="filtro-vale-pena-inner" ${filtroValePena ? 'checked' : ''}> Só "vale a pena"</label>
-      <label>Chance mínima <input type="number" id="filtro-chance-min-inner" value="${filtroChanceMin}" min="0" max="100" step="1">%</label>
-      <label><input type="checkbox" id="filtro-pendentes-inner" ${filtroSoPendentes ? 'checked' : ''}> Só jogos futuros</label>
-      <label><input type="checkbox" id="filtro-hist-curto-inner" ${filtroEsconderHistCurto ? 'checked' : ''}> Esconder times com histórico curto</label>
-      <label><input type="checkbox" id="filtro-marcados-inner" ${filtroSoMarcados ? 'checked' : ''}> Mostrar só marcados</label>
-      <input type="text" id="filtro-busca-inner" placeholder="Buscar time ou liga..." value="${filtroBusca}">
-      <span class="count-tag">${filtrados.length} de ${dadosCompletos.length} jogos</span>
-    </div>
-  `;
+  const countTagSpan = document.getElementById('count-tag-span');
+  if (countTagSpan) countTagSpan.textContent = `${filtrados.length} de ${dadosCompletos.length} jogos`;
 
   let listaHtml = '';
   if (filtrados.length === 0) {
@@ -535,32 +608,8 @@ function renderizarPainel() {
     }).join('');
   }
 
-  document.getElementById('content').innerHTML = avisoHtml + ringsHtml + controlsHtml + listaHtml;
+  document.getElementById('lista-area').innerHTML = listaHtml;
 
-  document.getElementById('filtro-vale-pena-inner').addEventListener('change', (e) => {
-    document.getElementById('filtro-vale-pena').checked = e.target.checked;
-    renderizarPainel();
-  });
-  document.getElementById('filtro-chance-min-inner').addEventListener('input', (e) => {
-    document.getElementById('filtro-chance-min').value = e.target.value;
-    renderizarPainel();
-  });
-  document.getElementById('filtro-pendentes-inner').addEventListener('change', (e) => {
-    document.getElementById('filtro-pendentes').checked = e.target.checked;
-    renderizarPainel();
-  });
-  document.getElementById('filtro-hist-curto-inner').addEventListener('change', (e) => {
-    document.getElementById('filtro-hist-curto').checked = e.target.checked;
-    renderizarPainel();
-  });
-  document.getElementById('filtro-marcados-inner').addEventListener('change', (e) => {
-    document.getElementById('filtro-marcados').checked = e.target.checked;
-    renderizarPainel();
-  });
-  document.getElementById('filtro-busca-inner').addEventListener('input', (e) => {
-    document.getElementById('filtro-busca').value = e.target.value;
-    renderizarPainel();
-  });
   document.querySelectorAll('.btn-check').forEach(btn => {
     btn.addEventListener('click', (e) => {
       alternarCheck(e.target.getAttribute('data-chave'));
