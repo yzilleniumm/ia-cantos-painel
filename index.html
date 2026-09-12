@@ -628,8 +628,8 @@ async function buscarCsv(url) {
 
 async function carregarDados() {
   const statusLine = document.getElementById('status-line');
-  const content = document.getElementById('content');
-  content.innerHTML = '<div class="loading">Buscando dados do Gist...</div>';
+  const listaArea = document.getElementById('lista-area');
+  if (listaArea) listaArea.innerHTML = '<div class="loading">Buscando dados do Gist...</div>';
   statusLine.textContent = 'Carregando...';
 
   try {
@@ -657,7 +657,10 @@ async function carregarDados() {
 
     renderizarPainel();
   } catch (erro) {
-    content.innerHTML = `<div class="error">Não consegui carregar os dados: ${erro.message}<br>Confere se o Gist ainda está público e se as URLs estão certas.</div>`;
+    const listaAreaErro = document.getElementById('lista-area');
+    if (listaAreaErro) {
+      listaAreaErro.innerHTML = `<div class="error">Não consegui carregar os dados: ${erro.message}<br>Confere se o Gist ainda está público e se as URLs estão certas.</div>`;
+    }
     statusLine.textContent = 'Falha ao carregar.';
   }
 }
