@@ -289,6 +289,8 @@ const GIST_OVER_URL = "https://gist.githubusercontent.com/yzilleniumm/38dee4e466
 const GIST_UNDER_URL = "https://gist.githubusercontent.com/yzilleniumm/38dee4e466b9787f8ec9d4bce19dc163/raw/registro_leitura_facil_menos35.csv";
 const CHECKS_RAW_URL = "https://gist.githubusercontent.com/yzilleniumm/38dee4e466b9787f8ec9d4bce19dc163/raw/checks.json";
 const CHECKS_PROXY_URL = "https://ia-cantos-checks-proxy.yzilleniumm.workers.dev/";
+const STATUS_AO_VIVO_URL = "https://ia-cantos-checks-proxy.yzilleniumm.workers.dev/status-ao-vivo";
+let cacheStatusAoVivo = {};
 
 const CONFIG_MERCADO = {
   over: {
@@ -364,6 +366,38 @@ function formatarData(str) {
   return d.toLocaleString('pt-BR', {
     timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'
   }) + ' (BRT)';
+}
+
+function agendarBuscaStatusVivo(fixtureId, idTag) {
+  setTimeout(async () => {
+    const dados = await buscarStatusAoVivo(fixtureId);
+    const elTag = document.getElementById(idTag);
+    if (!elTag || !dados) return;
+
+    if (dados.status === '1H' && dados.minuto !== null && dados.minuto !== undefined) {
+      elTag.textContent = `Jogando — ${dados.minuto}'`;
+    } else if (dados.status === 'HT' || dados.status === '2H' || dados.status === 'FT') {
+      elTag.textContent = '1º tempo encerrado';
+      elTag.className = 'tag aguardando';
+    }
+    // Se o status vier NS (ainda não começou) ou outro valor, mantem o texto generico "Jogando"
+  }, 50);
+}
+
+async function buscarStatusAoVivo(fixtureId) {
+  if (cacheStatusAoVivo[fixtureId] !== undefined) {
+    return cacheStatusAoVivo[fixtureId];
+  }
+  try {
+    const resp = await fetch(`${STATUS_AO_VIVO_URL}?fixture_id=${fixtureId}`);
+    if (!resp.ok) throw new Error('status ' + resp.status);
+    const dados = await resp.json();
+    cacheStatusAoVivo[fixtureId] = dados;
+    return dados;
+  } catch (erro) {
+    console.warn('Falha ao buscar status ao vivo do fixture', fixtureId, erro.message);
+    return null;
+  }
 }
 
 async function carregarChecks() {
@@ -600,7 +634,11 @@ function renderizarLista() {
         } else if (minutosDesdeInicio < 0) {
           tagHtml = '<span class="tag pendente">Ainda não jogou</span>';
         } else if (minutosDesdeInicio < 200) {
-          tagHtml = '<span class="tag jogando">Jogando</span>';
+          const idTag = 'tag-' + String(l['fixture_id'] || chaveJogo(l)).replace(/[^a-zA-Z0-9]/g, '');
+          tagHtml = `<span class="tag jogando" id="${idTag}">Jogando</span>`;
+          if (mercadoAtivo === 'under' && l['fixture_id']) {
+            agendarBuscaStatusVivo(l['fixture_id'], idTag);
+          }
         } else {
           tagHtml = '<span class="tag aguardando">Aguardando resultado</span>';
         }
