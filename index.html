@@ -22,6 +22,10 @@
     --red: #C1554B;
     --red-text: #FBE9E7;
     --ring-track: #1D3D30;
+    --verde: #4CAF6D;
+    --verde-text: #0B2416;
+    --amarelo: #D9A544;
+    --amarelo-text: #2A1F0A;
   }
   * { box-sizing: border-box; }
   body {
@@ -174,8 +178,9 @@
     padding: 14px 18px;
     margin-bottom: 8px;
   }
-  .match.vale { border-left-color: var(--gold); }
-  .match.nao-vale { border-left-color: var(--red); }
+  .match.chance-alta { border-left-color: var(--verde); }
+  .match.chance-media { border-left-color: var(--amarelo); }
+  .match.chance-baixa { border-left-color: var(--red); }
   .match-teams { font-size: 15px; font-weight: 500; }
   .match-teams .apontado { color: var(--gold); font-weight: 600; }
   .match-meta .lado-apontado { color: var(--gold); }
@@ -490,7 +495,6 @@ function renderizarControlesEIndicadores() {
   const filtroValePena = document.getElementById('filtro-vale-pena').checked;
   const filtroChanceMin = parseFloat(document.getElementById('filtro-chance-min').value) || 0;
   const filtroSoPendentes = document.getElementById('filtro-pendentes').checked;
-  const filtroEsconderHistCurto = document.getElementById('filtro-hist-curto').checked;
   const filtroSoMarcados = document.getElementById('filtro-marcados').checked;
   const filtroBusca = document.getElementById('filtro-busca').value;
 
@@ -499,7 +503,6 @@ function renderizarControlesEIndicadores() {
       <label><input type="checkbox" id="filtro-vale-pena-inner" ${filtroValePena ? 'checked' : ''}> Só "vale a pena"</label>
       <label>Chance mínima <input type="number" id="filtro-chance-min-inner" value="${filtroChanceMin}" min="0" max="100" step="1">%</label>
       <label><input type="checkbox" id="filtro-pendentes-inner" ${filtroSoPendentes ? 'checked' : ''}> Só jogos futuros</label>
-      <label><input type="checkbox" id="filtro-hist-curto-inner" ${filtroEsconderHistCurto ? 'checked' : ''}> Esconder times com histórico curto</label>
       <label><input type="checkbox" id="filtro-marcados-inner" ${filtroSoMarcados ? 'checked' : ''}> Mostrar só marcados</label>
       <input type="text" id="filtro-busca-inner" placeholder="Buscar time ou liga..." value="${filtroBusca}">
       <span class="count-tag" id="count-tag-span"></span>
@@ -520,10 +523,6 @@ function renderizarControlesEIndicadores() {
     document.getElementById('filtro-pendentes').checked = e.target.checked;
     renderizarLista();
   });
-  document.getElementById('filtro-hist-curto-inner').addEventListener('change', (e) => {
-    document.getElementById('filtro-hist-curto').checked = e.target.checked;
-    renderizarLista();
-  });
   document.getElementById('filtro-marcados-inner').addEventListener('change', (e) => {
     document.getElementById('filtro-marcados').checked = e.target.checked;
     renderizarLista();
@@ -542,7 +541,6 @@ function renderizarLista() {
   const filtroValePena = document.getElementById('filtro-vale-pena').checked;
   const filtroChanceMin = parseFloat(document.getElementById('filtro-chance-min').value) || 0;
   const filtroSoPendentes = document.getElementById('filtro-pendentes').checked;
-  const filtroEsconderHistCurto = document.getElementById('filtro-hist-curto').checked;
   const filtroSoMarcados = document.getElementById('filtro-marcados').checked;
   const filtroBusca = document.getElementById('filtro-busca').value.trim().toLowerCase();
 
@@ -553,12 +551,15 @@ function renderizarLista() {
     if (filtroSoPendentes && normalizarTexto(l["Aconteceu?"]) !== normalizarTexto("Ainda não jogou")) return false;
     if (filtroBusca && !l["Jogo"].toLowerCase().includes(filtroBusca) && !l["Liga"].toLowerCase().includes(filtroBusca)) return false;
     const info = interpretarDetalhes(l["Detalhes"]);
-    if (filtroEsconderHistCurto && info.historicoCurto) return false;
     if (filtroSoMarcados && !checksData[chaveJogo(l)]) return false;
     return true;
   });
 
-  filtrados.sort((a, b) => new Date(a["Data"]) - new Date(b["Data"]));
+  filtrados.sort((a, b) => {
+    const chanceA = parsePercentual(a[cfg.colChance]) ?? 0;
+    const chanceB = parsePercentual(b[cfg.colChance]) ?? 0;
+    return chanceB - chanceA;
+  });
 
   const countTagSpan = document.getElementById('count-tag-span');
   if (countTagSpan) countTagSpan.textContent = `${filtrados.length} de ${dadosCompletos.length} jogos`;
@@ -568,7 +569,10 @@ function renderizarLista() {
     listaHtml = '<div class="empty">Nenhum jogo bate com esses filtros. Tenta baixar a chance mínima ou desmarcar algum filtro.</div>';
   } else {
     listaHtml = filtrados.map(l => {
-      const vale = normalizarTexto(l[cfg.colValePena]) === normalizarTexto("Vale a pena");
+      const chanceNum = parsePercentual(l[cfg.colChance]) ?? 0;
+      let classeCor = 'chance-baixa';
+      if (chanceNum >= 90) classeCor = 'chance-alta';
+      else if (chanceNum >= 50) classeCor = 'chance-media';
       const aconteceu = l["Aconteceu?"];
       let tagHtml = '';
       if (normalizarTexto(aconteceu) === normalizarTexto("Ainda não jogou")) {
@@ -585,7 +589,7 @@ function renderizarLista() {
       const marcado = !!checksData[chave];
       const mostrarCheck = normalizarTexto(aconteceu) === normalizarTexto("Ainda não jogou");
       return `
-        <div class="match ${vale ? 'vale' : 'nao-vale'}">
+        <div class="match ${classeCor}">
           <div>
             <div class="match-teams">${l["Jogo"]}</div>
             <div class="match-meta">${l["Liga"]} &middot; ${formatarData(l["Data"])}</div>
@@ -668,10 +672,9 @@ document.getElementById('tab-under').addEventListener('click', () => trocarMerca
 
 const filtroState = document.createElement('div');
 filtroState.innerHTML = `
-  <input type="checkbox" id="filtro-vale-pena" checked style="display:none">
-  <input type="number" id="filtro-chance-min" value="50" style="display:none">
+  <input type="checkbox" id="filtro-vale-pena" style="display:none">
+  <input type="number" id="filtro-chance-min" value="0" style="display:none">
   <input type="checkbox" id="filtro-pendentes" style="display:none">
-  <input type="checkbox" id="filtro-hist-curto" checked style="display:none">
   <input type="checkbox" id="filtro-marcados" style="display:none">
   <input type="text" id="filtro-busca" value="" style="display:none">
 `;
