@@ -202,6 +202,17 @@
   .tag.vale { background: var(--gold); color: var(--gold-text); }
   .tag.nao-vale { background: var(--red); color: var(--red-text); }
   .tag.pendente { background: var(--ring-track); color: var(--text-secondary); }
+  .tag.jogando { background: rgba(217, 100, 92, 0.18); color: var(--red); animation: pulsar 1.4s ease-in-out infinite; }
+  .tag.aguardando { background: rgba(224, 179, 84, 0.18); color: var(--amarelo); }
+  .tag.aguardando::before { content: '⏳'; display: inline-block; margin-right: 4px; animation: girar 2.2s linear infinite; }
+  @keyframes pulsar {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.45; }
+  }
+  @keyframes girar {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
   .badge-lado {
     display: inline-block;
     font-size: 11px;
@@ -580,7 +591,19 @@ function renderizarLista() {
       const aconteceu = l["Aconteceu?"];
       let tagHtml = '';
       if (normalizarTexto(aconteceu) === normalizarTexto("Ainda não jogou")) {
-        tagHtml = '<span class="tag pendente">Ainda não jogou</span>';
+        const dataJogo = new Date(String(l["Data"]).replace(' ', 'T'));
+        const agora = new Date();
+        const minutosDesdeInicio = (agora - dataJogo) / 60000;
+
+        if (isNaN(dataJogo.getTime())) {
+          tagHtml = '<span class="tag pendente">Ainda não jogou</span>';
+        } else if (minutosDesdeInicio < 0) {
+          tagHtml = '<span class="tag pendente">Ainda não jogou</span>';
+        } else if (minutosDesdeInicio < 200) {
+          tagHtml = '<span class="tag jogando">Jogando</span>';
+        } else {
+          tagHtml = '<span class="tag aguardando">Aguardando resultado</span>';
+        }
       } else if (normalizarTexto(aconteceu) === normalizarTexto("Sim")) {
         tagHtml = '<span class="tag vale">Bateu</span>';
       } else if (normalizarTexto(aconteceu) === normalizarTexto("Não")) {
@@ -688,6 +711,14 @@ filtroState.innerHTML = `
 document.body.appendChild(filtroState);
 
 carregarDados();
+
+// Recalcula apenas os status visuais (jogando/aguardando) a cada minuto,
+// sem buscar dados novos do Gist -- nao gasta nenhuma chamada de API.
+setInterval(() => {
+  if (document.getElementById('filtro-busca-inner')) {
+    renderizarLista();
+  }
+}, 60000);
 </script>
 </body>
 </html>
