@@ -10,27 +10,31 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <style>
   :root {
-    --bg: #0B1F17;
-    --panel: #122A20;
-    --card: #16332A;
-    --card-border: #234438;
-    --text-primary: #EDEFEA;
-    --text-secondary: #A9BDB2;
-    --text-muted: #6E8478;
+    --bg: #0B1626;
+    --panel: #122038;
+    --card: #172947;
+    --card-border: #253d63;
+    --text-primary: #E8EDF7;
+    --text-secondary: #9FB0CC;
+    --text-muted: #62729A;
     --gold: #D9A544;
     --gold-text: #2A1F0A;
-    --red: #C1554B;
-    --red-text: #FBE9E7;
-    --ring-track: #1D3D30;
-    --verde: #4CAF6D;
-    --verde-text: #0B2416;
-    --amarelo: #D9A544;
+    --red: #D9645C;
+    --red-text: #2E0F0C;
+    --ring-track: #1C2E4E;
+    --verde: #4FBE86;
+    --verde-text: #06180F;
+    --amarelo: #E0B354;
     --amarelo-text: #2A1F0A;
+    --bg-pattern-color: #2A4270;
   }
   * { box-sizing: border-box; }
   body {
     margin: 0;
-    background: var(--bg);
+    background-color: var(--bg);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='420' height='420' viewBox='0 0 420 420'%3E%3Cg fill='none' stroke='%232A4270' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round' opacity='0.55'%3E%3Ccircle cx='55' cy='60' r='22'/%3E%3Cpath d='M55 38 L68 48 L63 64 L47 64 L42 48 Z M55 38 L55 48 M68 48 L60 55 M42 48 L50 55 M47 64 L52 72 M63 64 L58 72'/%3E%3Cg transform='translate(230,40)'%3E%3Cpath d='M0 0 C0 22 -14 30 -14 44 L14 44 C14 30 0 22 0 0 Z'/%3E%3Cpath d='M-14 44 L-18 54 L18 54 L14 44'/%3E%3Cpath d='M-9 54 L-9 62 M9 54 L9 62 M-16 62 L16 62'/%3E%3C/g%3E%3Cg transform='translate(340,110)'%3E%3Crect x='-16' y='-4' width='32' height='9' rx='2'/%3E%3Cpath d='M-16 0 L-24 -8 M16 0 L24 -8 M-24 -8 L-24 -18 M24 -8 L24 -18'/%3E%3C/g%3E%3Cg transform='translate(70,170)'%3E%3Cpath d='M0 -20 L0 20 M0 -20 L18 -14 L18 -2 L0 -6' /%3E%3Cpath d='M-10 20 L10 20'/%3E%3C/g%3E%3Cg transform='translate(190,190) rotate(-18)'%3E%3Cpath d='M-20 10 C-20 -6 -6 -16 10 -14 C22 -12 26 0 18 8 C10 16 -4 18 -20 10 Z'/%3E%3Cpath d='M-20 10 L-30 18 M-30 18 L-30 26 L-22 26'/%3E%3C/g%3E%3Ccircle cx='330' cy='210' r='3'/%3E%3Ccircle cx='300' cy='230' r='2'/%3E%3Ccircle cx='355' cy='235' r='2.5'/%3E%3Cg transform='translate(30,280)'%3E%3Ccircle r='19'/%3E%3Cpath d='M0 -19 L5 -8 L17 -8 L8 0 L11 12 L0 5 L-11 12 L-8 0 L-17 -8 L-5 -8 Z' stroke-width='1'/%3E%3C/g%3E%3Cg transform='translate(150,310)'%3E%3Cpath d='M-22 15 L22 15 L14 -15 L-14 -15 Z'/%3E%3Cpath d='M-14 -15 L-22 15 M14 -15 L22 15 M-6 -15 L-10 15 M6 -15 L10 15'/%3E%3C/g%3E%3Cg transform='translate(270,320)'%3E%3Ccircle r='16'/%3E%3Cpath d='M-16 0 L16 0 M0 -16 L0 16 M-11 -11 L11 11 M11 -11 L-11 11'/%3E%3C/g%3E%3Cg transform='translate(380,300)'%3E%3Cpath d='M-14 -14 L14 14 M14 -14 L-14 14'/%3E%3Ccircle r='18'/%3E%3C/g%3E%3Cg transform='translate(120,60)'%3E%3Cpath d='M-15 8 Q-15 -12 0 -12 Q15 -12 15 8' /%3E%3Cpath d='M-15 8 L15 8 M-10 8 L-10 14 L10 14 L10 8'/%3E%3C/g%3E%3Cg transform='translate(390,380)'%3E%3Cpath d='M-12 12 L12 -12 M-12 -12 L12 12'/%3E%3C/g%3E%3Cg transform='translate(20,380) rotate(10)'%3E%3Crect x='-16' y='-10' width='32' height='20' rx='4'/%3E%3Cpath d='M-16 -2 L16 -2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    background-repeat: repeat;
+    background-attachment: fixed;
     color: var(--text-primary);
     font-family: 'IBM Plex Sans', sans-serif;
     font-variant-numeric: tabular-nums;
