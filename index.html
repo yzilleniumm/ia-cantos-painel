@@ -653,6 +653,7 @@ function renderizarLista() {
       if (chanceNum >= 90) classeCor = 'chance-alta';
       else if (chanceNum >= 50) classeCor = 'chance-media';
       const aconteceu = l["Aconteceu?"];
+      const info = interpretarDetalhes(l["Detalhes"]);
       let tagHtml = '';
       if (normalizarTexto(aconteceu) === normalizarTexto("Ainda não jogou")) {
         const dataJogo = new Date(String(l["Data"]).replace(' ', 'T'));
@@ -683,7 +684,6 @@ function renderizarLista() {
       } else {
         tagHtml = '<span class="tag pendente">Sem dado</span>';
       }
-      const info = interpretarDetalhes(l["Detalhes"]);
       const chave = chaveJogo(l);
       const marcado = !!checksData[chave];
       const mostrarCheck = normalizarTexto(aconteceu) === normalizarTexto("Ainda não jogou");
