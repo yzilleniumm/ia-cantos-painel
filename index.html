@@ -691,7 +691,7 @@ function renderizarLista() {
       const idDetalhes = 'det-' + idCard;
       const podeExpandir = mercadoAtivo === 'under' && !!l['fixture_id'];
       return `
-        <div class="match ${classeCor}" ${podeExpandir ? `id="${idCard}" data-fixture="${l['fixture_id']}" data-lado="${info.lado === 'Casa' ? 'casa' : 'visitante'}" data-det="${idDetalhes}"` : ''}>
+        <div class="match ${classeCor}" ${podeExpandir ? `id="${idCard}" data-fixture="${l['fixture_id']}" data-lado="${info.lado === 'Casa' ? 'casa' : 'visitante'}" data-det="${idDetalhes}" data-hora-jogo="${l['Data']}"` : ''}>
           <div>
             <div class="match-teams">${l["Jogo"]}</div>
             <div class="match-meta">${l["Liga"]} &middot; ${formatarData(l["Data"])}</div>
@@ -739,12 +739,12 @@ function renderizarLista() {
       }
       elDet.classList.add('aberto');
       elDet.innerHTML = '<div style="opacity:0.6;">Carregando detalhes...</div>';
-      carregarDetalhesJogo(card.getAttribute('data-fixture'), card.getAttribute('data-lado'), elDet);
+      carregarDetalhesJogo(card.getAttribute('data-fixture'), card.getAttribute('data-lado'), elDet, card.getAttribute('data-hora-jogo'));
     });
   });
 }
 
-async function carregarDetalhesJogo(fixtureId, ladoApontado, elDet) {
+async function carregarDetalhesJogo(fixtureId, ladoApontado, elDet, horaJogo) {
   const dados = await buscarStatusAoVivo(fixtureId);
   if (!dados || !dados.status) {
     elDet.innerHTML = '<div>Não consegui buscar os detalhes ao vivo agora. Tenta de novo em instantes.</div>';
@@ -756,7 +756,13 @@ async function carregarDetalhesJogo(fixtureId, ladoApontado, elDet) {
 
   let statusTexto = '';
   if (dados.status === 'NS') {
-    statusTexto = 'Jogo ainda não começou.';
+    const dataJogoOriginal = horaJogo ? new Date(String(horaJogo).replace(' ', 'T')) : null;
+    const minutosDesdeHorarioOriginal = dataJogoOriginal ? (new Date() - dataJogoOriginal) / 60000 : 0;
+    if (dataJogoOriginal && minutosDesdeHorarioOriginal > 60) {
+      statusTexto = 'Jogo não começou no horário previsto — pode ter sido adiado ou remarcado. Confira a fonte oficial.';
+    } else {
+      statusTexto = 'Jogo ainda não começou.';
+    }
   } else if (dados.status === '1H') {
     statusTexto = `1º tempo em andamento — ${dados.minuto}'`;
   } else if (dados.status === 'HT') {
