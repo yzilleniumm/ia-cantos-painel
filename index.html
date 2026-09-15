@@ -634,7 +634,6 @@ function renderizarLista() {
     if (chance === null || chance < filtroChanceMin) return false;
     if (filtroSoPendentes && normalizarTexto(l["Aconteceu?"]) !== normalizarTexto("Ainda não jogou")) return false;
     if (filtroBusca && !l["Jogo"].toLowerCase().includes(filtroBusca) && !l["Liga"].toLowerCase().includes(filtroBusca)) return false;
-    const info = interpretarDetalhes(l["Detalhes"]);
     if (filtroSoMarcados && !checksData[chaveJogo(l)]) return false;
     return true;
   });
