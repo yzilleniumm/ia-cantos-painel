@@ -604,11 +604,7 @@ function renderizarLista() {
     return true;
   });
 
-  filtrados.sort((a, b) => {
-    const chanceA = parsePercentual(a[cfg.colChance]) ?? 0;
-    const chanceB = parsePercentual(b[cfg.colChance]) ?? 0;
-    return chanceB - chanceA;
-  });
+  filtrados.sort((a, b) => new Date(String(a["Data"]).replace(' ', 'T')) - new Date(String(b["Data"]).replace(' ', 'T')));
 
   const countTagSpan = document.getElementById('count-tag-span');
   if (countTagSpan) countTagSpan.textContent = `${filtrados.length} de ${dadosCompletos.length} jogos`;
