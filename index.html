@@ -232,6 +232,29 @@
     margin-top: 3px;
   }
 
+  .match { cursor: pointer; }
+  .match-detalhes {
+    display: none;
+    grid-column: 1 / -1;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--card-border);
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+  .match-detalhes.aberto { display: block; }
+  .match-detalhes .linha-stat { display: flex; justify-content: space-between; margin-bottom: 4px; }
+  .match-detalhes .linha-stat b { color: var(--text-primary); }
+  .badge-provisorio {
+    display: inline-block;
+    font-size: 10px;
+    color: var(--amarelo);
+    border: 1px solid var(--amarelo);
+    border-radius: 4px;
+    padding: 1px 6px;
+    margin-left: 6px;
+  }
+
   .empty, .loading, .error {
     text-align: center;
     color: var(--text-muted);
@@ -649,8 +672,11 @@ function renderizarLista() {
       const chave = chaveJogo(l);
       const marcado = !!checksData[chave];
       const mostrarCheck = normalizarTexto(aconteceu) === normalizarTexto("Ainda não jogou");
+      const idCard = 'card-' + String(l['fixture_id'] || chave).replace(/[^a-zA-Z0-9]/g, '');
+      const idDetalhes = 'det-' + idCard;
+      const podeExpandir = mercadoAtivo === 'under' && !!l['fixture_id'];
       return `
-        <div class="match ${classeCor}">
+        <div class="match ${classeCor}" ${podeExpandir ? `id="${idCard}" data-fixture="${l['fixture_id']}" data-lado="${info.lado === 'Casa' ? 'casa' : 'visitante'}" data-det="${idDetalhes}"` : ''}>
           <div>
             <div class="match-teams">${l["Jogo"]}</div>
             <div class="match-meta">${l["Liga"]} &middot; ${formatarData(l["Data"])}</div>
@@ -669,6 +695,7 @@ function renderizarLista() {
             ${tagHtml}
             ${mostrarCheck ? `<button class="btn-check" data-chave="${chave.replace(/"/g, '&quot;')}" style="font-size:11px; padding:4px 10px; ${marcado ? 'background:var(--gold); color:var(--gold-text); border-color:var(--gold);' : ''}">${marcado ? '✓ Acompanhando' : 'Acompanhar'}</button>` : ''}
           </div>
+          ${podeExpandir ? `<div class="match-detalhes" id="${idDetalhes}"></div>` : ''}
         </div>
       `;
     }).join('');
@@ -678,9 +705,70 @@ function renderizarLista() {
 
   document.querySelectorAll('.btn-check').forEach(btn => {
     btn.addEventListener('click', (e) => {
+      e.stopPropagation();
       alternarCheck(e.target.getAttribute('data-chave'));
     });
   });
+
+  document.querySelectorAll('.match[data-fixture]').forEach(card => {
+    card.addEventListener('click', (e) => {
+      if (e.target.closest('.btn-check')) return;
+      const idDet = card.getAttribute('data-det');
+      const elDet = document.getElementById(idDet);
+      if (!elDet) return;
+
+      const estaAberto = elDet.classList.contains('aberto');
+      if (estaAberto) {
+        elDet.classList.remove('aberto');
+        return;
+      }
+      elDet.classList.add('aberto');
+      elDet.innerHTML = '<div style="opacity:0.6;">Carregando detalhes...</div>';
+      carregarDetalhesJogo(card.getAttribute('data-fixture'), card.getAttribute('data-lado'), elDet);
+    });
+  });
+}
+
+async function carregarDetalhesJogo(fixtureId, ladoApontado, elDet) {
+  const dados = await buscarStatusAoVivo(fixtureId);
+  if (!dados || !dados.status) {
+    elDet.innerHTML = '<div>Não consegui buscar os detalhes ao vivo agora. Tenta de novo em instantes.</div>';
+    return;
+  }
+
+  const nomeTime = ladoApontado === 'casa' ? dados.time_casa : dados.time_visitante;
+  const cantosTime = ladoApontado === 'casa' ? dados.cantos_casa_1h : dados.cantos_visitante_1h;
+
+  let statusTexto = '';
+  if (dados.status === 'NS') {
+    statusTexto = 'Jogo ainda não começou.';
+  } else if (dados.status === '1H') {
+    statusTexto = `1º tempo em andamento — ${dados.minuto}'`;
+  } else if (dados.status === 'HT') {
+    statusTexto = 'Intervalo (1º tempo encerrado)';
+  } else if (dados.status === '2H' || dados.status === 'FT') {
+    statusTexto = '1º tempo já encerrado';
+  } else {
+    statusTexto = `Status: ${dados.status}`;
+  }
+
+  let resultadoHtml = '';
+  const statusComResultado1h = ['HT', '2H', 'FT'];
+  if (statusComResultado1h.includes(dados.status) && cantosTime !== null && cantosTime !== undefined) {
+    const bateu = cantosTime < 3.5;
+    resultadoHtml = `
+      <div class="linha-stat">
+        <span>Resultado do 1º tempo</span>
+        <b style="color: ${bateu ? 'var(--verde)' : 'var(--red)'}">${bateu ? 'Bateu' : 'Não bateu'} (menos de 3.5)<span class="badge-provisorio">provisório</span></b>
+      </div>`;
+  }
+
+  elDet.innerHTML = `
+    <div class="linha-stat"><span>Status</span><b>${statusTexto}</b></div>
+    <div class="linha-stat"><span>Cantos de ${nomeTime || 'time apontado'} (1º tempo)</span><b>${cantosTime ?? '—'}</b></div>
+    ${resultadoHtml}
+    <div style="font-size:11px; opacity:0.6; margin-top:6px;">Este resultado é provisório e será confirmado oficialmente pela rotina automática.</div>
+  `;
 }
 
 async function buscarCsv(url) {
