@@ -391,7 +391,7 @@ function formatarData(str) {
   }) + ' (BRT)';
 }
 
-function agendarBuscaStatusVivo(fixtureId, idTag) {
+function agendarBuscaStatusVivo(fixtureId, idTag, ladoApontado) {
   setTimeout(async () => {
     const dados = await buscarStatusAoVivo(fixtureId);
     const elTag = document.getElementById(idTag);
@@ -399,11 +399,23 @@ function agendarBuscaStatusVivo(fixtureId, idTag) {
 
     if (dados.status === '1H' && dados.minuto !== null && dados.minuto !== undefined) {
       elTag.textContent = `Jogando — ${dados.minuto}'`;
-    } else if (dados.status === 'HT' || dados.status === '2H' || dados.status === 'FT') {
-      elTag.textContent = '1º tempo encerrado';
-      elTag.className = 'tag aguardando';
+      elTag.className = 'tag jogando';
+      return;
     }
-    // Se o status vier NS (ainda não começou) ou outro valor, mantem o texto generico "Jogando"
+
+    const statusComResultado = ['HT', '2H', 'FT'];
+    if (statusComResultado.includes(dados.status)) {
+      const cantosTime = ladoApontado === 'casa' ? dados.cantos_casa_1h : dados.cantos_visitante_1h;
+      if (cantosTime !== null && cantosTime !== undefined) {
+        const bateu = cantosTime < 3.5;
+        elTag.textContent = (bateu ? 'Bateu' : 'Não bateu') + ' (provisório)';
+        elTag.className = bateu ? 'tag vale' : 'tag nao-vale';
+      } else {
+        elTag.textContent = '1º tempo encerrado';
+        elTag.className = 'tag aguardando';
+      }
+    }
+    // Se o status vier NS (ainda não começou) ou outro valor, mantem o texto que ja estava
   }, 50);
 }
 
@@ -656,10 +668,14 @@ function renderizarLista() {
           const idTag = 'tag-' + String(l['fixture_id'] || chaveJogo(l)).replace(/[^a-zA-Z0-9]/g, '');
           tagHtml = `<span class="tag jogando" id="${idTag}">Jogando</span>`;
           if (mercadoAtivo === 'under' && l['fixture_id']) {
-            agendarBuscaStatusVivo(l['fixture_id'], idTag);
+            agendarBuscaStatusVivo(l['fixture_id'], idTag, info.lado === 'Casa' ? 'casa' : 'visitante');
           }
         } else {
-          tagHtml = '<span class="tag aguardando">Aguardando resultado</span>';
+          const idTag2 = 'tag-' + String(l['fixture_id'] || chaveJogo(l)).replace(/[^a-zA-Z0-9]/g, '');
+          tagHtml = `<span class="tag aguardando" id="${idTag2}">Aguardando resultado</span>`;
+          if (mercadoAtivo === 'under' && l['fixture_id']) {
+            agendarBuscaStatusVivo(l['fixture_id'], idTag2, info.lado === 'Casa' ? 'casa' : 'visitante');
+          }
         }
       } else if (normalizarTexto(aconteceu) === normalizarTexto("Sim")) {
         tagHtml = '<span class="tag vale">Bateu</span>';
