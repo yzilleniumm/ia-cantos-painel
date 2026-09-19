@@ -391,7 +391,11 @@ function formatarData(str) {
   }) + ' (BRT)';
 }
 
+let contadorFilaStatusVivo = 0;
+
 function agendarBuscaStatusVivo(fixtureId, idTag, ladoApontado) {
+  const atrasoEscalonado = 300 + (contadorFilaStatusVivo * 800);
+  contadorFilaStatusVivo++;
   setTimeout(async () => {
     const dados = await buscarStatusAoVivo(fixtureId);
     const elTag = document.getElementById(idTag);
@@ -416,7 +420,7 @@ function agendarBuscaStatusVivo(fixtureId, idTag, ladoApontado) {
       }
     }
     // Se o status vier NS (ainda não começou) ou outro valor, mantem o texto que ja estava
-  }, 50);
+  }, atrasoEscalonado);
 }
 
 async function buscarStatusAoVivo(fixtureId) {
@@ -618,6 +622,7 @@ function renderizarControlesEIndicadores() {
 }
 
 function renderizarLista() {
+  contadorFilaStatusVivo = 0;
   const cfg = CONFIG_MERCADO[mercadoAtivo];
   const dadosCompletos = dadosPorMercado[mercadoAtivo];
   if (dadosCompletos.length === 0) return;
