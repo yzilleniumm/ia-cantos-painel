@@ -391,38 +391,6 @@ function formatarData(str) {
   }) + ' (BRT)';
 }
 
-let contadorFilaStatusVivo = 0;
-
-function agendarBuscaStatusVivo(fixtureId, idTag, ladoApontado) {
-  const atrasoEscalonado = 300 + (contadorFilaStatusVivo * 800);
-  contadorFilaStatusVivo++;
-  setTimeout(async () => {
-    const dados = await buscarStatusAoVivo(fixtureId);
-    const elTag = document.getElementById(idTag);
-    if (!elTag || !dados) return;
-
-    if (dados.status === '1H' && dados.minuto !== null && dados.minuto !== undefined) {
-      elTag.textContent = `Jogando — ${dados.minuto}'`;
-      elTag.className = 'tag jogando';
-      return;
-    }
-
-    const statusComResultado = ['HT', '2H', 'FT'];
-    if (statusComResultado.includes(dados.status)) {
-      const cantosTime = ladoApontado === 'casa' ? dados.cantos_casa_1h : dados.cantos_visitante_1h;
-      if (cantosTime !== null && cantosTime !== undefined) {
-        const bateu = cantosTime < 3.5;
-        elTag.textContent = (bateu ? 'Bateu' : 'Não bateu') + ' (provisório)';
-        elTag.className = bateu ? 'tag vale' : 'tag nao-vale';
-      } else {
-        elTag.textContent = '1º tempo encerrado';
-        elTag.className = 'tag aguardando';
-      }
-    }
-    // Se o status vier NS (ainda não começou) ou outro valor, mantem o texto que ja estava
-  }, atrasoEscalonado);
-}
-
 async function buscarStatusAoVivo(fixtureId) {
   if (cacheStatusAoVivo[fixtureId] !== undefined) {
     return cacheStatusAoVivo[fixtureId];
@@ -622,7 +590,6 @@ function renderizarControlesEIndicadores() {
 }
 
 function renderizarLista() {
-  contadorFilaStatusVivo = 0;
   const cfg = CONFIG_MERCADO[mercadoAtivo];
   const dadosCompletos = dadosPorMercado[mercadoAtivo];
   if (dadosCompletos.length === 0) return;
@@ -688,17 +655,9 @@ function renderizarLista() {
         } else if (minutosDesdeInicio < 0) {
           tagHtml = '<span class="tag pendente">Ainda não jogou</span>';
         } else if (minutosDesdeInicio < 200) {
-          const idTag = 'tag-' + String(l['fixture_id'] || chaveJogo(l)).replace(/[^a-zA-Z0-9]/g, '');
-          tagHtml = `<span class="tag jogando" id="${idTag}">Jogando</span>`;
-          if (mercadoAtivo === 'under' && l['fixture_id']) {
-            agendarBuscaStatusVivo(l['fixture_id'], idTag, info.lado === 'Casa' ? 'casa' : 'visitante');
-          }
+          tagHtml = '<span class="tag jogando">Jogando</span>';
         } else {
-          const idTag2 = 'tag-' + String(l['fixture_id'] || chaveJogo(l)).replace(/[^a-zA-Z0-9]/g, '');
-          tagHtml = `<span class="tag aguardando" id="${idTag2}">Aguardando resultado</span>`;
-          if (mercadoAtivo === 'under' && l['fixture_id']) {
-            agendarBuscaStatusVivo(l['fixture_id'], idTag2, info.lado === 'Casa' ? 'casa' : 'visitante');
-          }
+          tagHtml = '<span class="tag aguardando">Aguardando resultado</span>';
         }
       } else if (normalizarTexto(aconteceu) === normalizarTexto("Sim")) {
         const cantosOficial = l["Cantos 1T"];
