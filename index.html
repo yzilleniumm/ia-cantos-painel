@@ -580,17 +580,17 @@ function renderizarControlesEIndicadores() {
 
   atualizarIndicadores();
 
-  const filtroValePena = document.getElementById('filtro-vale-pena').checked;
   const filtroChanceMin = parseFloat(document.getElementById('filtro-chance-min').value) || 0;
   const filtroSoPendentes = document.getElementById('filtro-pendentes').checked;
   const filtroSoMarcados = document.getElementById('filtro-marcados').checked;
+  const filtroSoAoVivo = document.getElementById('filtro-ao-vivo').checked;
   const filtroBusca = document.getElementById('filtro-busca').value;
 
   const controlsHtml = `
     <div class="controls">
-      <label><input type="checkbox" id="filtro-vale-pena-inner" ${filtroValePena ? 'checked' : ''}> Só "vale a pena"</label>
       <label>Chance mínima <input type="number" id="filtro-chance-min-inner" value="${filtroChanceMin}" min="0" max="100" step="1">%</label>
       <label><input type="checkbox" id="filtro-pendentes-inner" ${filtroSoPendentes ? 'checked' : ''}> Só jogos futuros</label>
+      <label><input type="checkbox" id="filtro-ao-vivo-inner" ${filtroSoAoVivo ? 'checked' : ''}> Só jogos ao vivo</label>
       <label><input type="checkbox" id="filtro-marcados-inner" ${filtroSoMarcados ? 'checked' : ''}> Mostrar só marcados</label>
       <input type="text" id="filtro-busca-inner" placeholder="Buscar time ou liga..." value="${filtroBusca}">
       <span class="count-tag" id="count-tag-span"></span>
@@ -599,16 +599,16 @@ function renderizarControlesEIndicadores() {
 
   const elControles = document.getElementById('controles-area'); if (elControles) elControles.innerHTML = controlsHtml;
 
-  document.getElementById('filtro-vale-pena-inner').addEventListener('change', (e) => {
-    document.getElementById('filtro-vale-pena').checked = e.target.checked;
-    renderizarLista();
-  });
   document.getElementById('filtro-chance-min-inner').addEventListener('input', (e) => {
     document.getElementById('filtro-chance-min').value = e.target.value;
     renderizarLista();
   });
   document.getElementById('filtro-pendentes-inner').addEventListener('change', (e) => {
     document.getElementById('filtro-pendentes').checked = e.target.checked;
+    renderizarLista();
+  });
+  document.getElementById('filtro-ao-vivo-inner').addEventListener('change', (e) => {
+    document.getElementById('filtro-ao-vivo').checked = e.target.checked;
     renderizarLista();
   });
   document.getElementById('filtro-marcados-inner').addEventListener('change', (e) => {
@@ -627,19 +627,26 @@ function renderizarLista() {
   const dadosCompletos = dadosPorMercado[mercadoAtivo];
   if (dadosCompletos.length === 0) return;
 
-  const filtroValePena = document.getElementById('filtro-vale-pena').checked;
   const filtroChanceMin = parseFloat(document.getElementById('filtro-chance-min').value) || 0;
   const filtroSoPendentes = document.getElementById('filtro-pendentes').checked;
   const filtroSoMarcados = document.getElementById('filtro-marcados').checked;
+  const filtroSoAoVivo = document.getElementById('filtro-ao-vivo').checked;
   const filtroBusca = document.getElementById('filtro-busca').value.trim().toLowerCase();
 
   let filtrados = dadosCompletos.filter(l => {
-    if (filtroValePena && normalizarTexto(l[cfg.colValePena]) !== normalizarTexto("Vale a pena")) return false;
     const chance = parsePercentual(l[cfg.colChance]);
     if (chance === null || chance < filtroChanceMin) return false;
     if (filtroSoPendentes && normalizarTexto(l["Aconteceu?"]) !== normalizarTexto("Ainda não jogou")) return false;
     if (filtroBusca && !l["Jogo"].toLowerCase().includes(filtroBusca) && !l["Liga"].toLowerCase().includes(filtroBusca)) return false;
     if (filtroSoMarcados && !checksData[chaveJogo(l)]) return false;
+
+    if (filtroSoAoVivo) {
+      if (normalizarTexto(l["Aconteceu?"]) !== normalizarTexto("Ainda não jogou")) return false;
+      const dataJogoAoVivo = new Date(String(l["Data"]).replace(' ', 'T'));
+      if (isNaN(dataJogoAoVivo.getTime())) return false;
+      const minutosAoVivo = (new Date() - dataJogoAoVivo) / 60000;
+      if (minutosAoVivo < 0 || minutosAoVivo >= 200) return false;
+    }
 
     // Auto-exclui jogos travados em "aguardando resultado" ha mais de 48h (2880 min)
     // alem dos 200 min ja usados para entrar nesse status -- ou seja, 3080 min desde o inicio do jogo
@@ -865,10 +872,10 @@ document.getElementById('tab-under').addEventListener('click', () => trocarMerca
 
 const filtroState = document.createElement('div');
 filtroState.innerHTML = `
-  <input type="checkbox" id="filtro-vale-pena" style="display:none">
   <input type="number" id="filtro-chance-min" value="0" style="display:none">
   <input type="checkbox" id="filtro-pendentes" style="display:none">
   <input type="checkbox" id="filtro-marcados" style="display:none">
+  <input type="checkbox" id="filtro-ao-vivo" style="display:none">
   <input type="text" id="filtro-busca" value="" style="display:none">
 `;
 document.body.appendChild(filtroState);
