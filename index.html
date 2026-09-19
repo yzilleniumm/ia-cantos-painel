@@ -635,6 +635,17 @@ function renderizarLista() {
     if (filtroSoPendentes && normalizarTexto(l["Aconteceu?"]) !== normalizarTexto("Ainda não jogou")) return false;
     if (filtroBusca && !l["Jogo"].toLowerCase().includes(filtroBusca) && !l["Liga"].toLowerCase().includes(filtroBusca)) return false;
     if (filtroSoMarcados && !checksData[chaveJogo(l)]) return false;
+
+    // Auto-exclui jogos travados em "aguardando resultado" ha mais de 48h (2880 min)
+    // alem dos 200 min ja usados para entrar nesse status -- ou seja, 3080 min desde o inicio do jogo
+    if (normalizarTexto(l["Aconteceu?"]) === normalizarTexto("Ainda não jogou")) {
+      const dataJogoExclusao = new Date(String(l["Data"]).replace(' ', 'T'));
+      if (!isNaN(dataJogoExclusao.getTime())) {
+        const minutosDesdeInicioExclusao = (new Date() - dataJogoExclusao) / 60000;
+        if (minutosDesdeInicioExclusao >= 3080) return false;
+      }
+    }
+
     return true;
   });
 
@@ -678,9 +689,13 @@ function renderizarLista() {
           }
         }
       } else if (normalizarTexto(aconteceu) === normalizarTexto("Sim")) {
-        tagHtml = '<span class="tag vale">Bateu</span>';
+        const cantosOficial = l["Cantos 1T"];
+        const sufixoCantos = (cantosOficial !== undefined && cantosOficial !== null && cantosOficial !== '') ? ` — ${cantosOficial} cantos` : '';
+        tagHtml = `<span class="tag vale">Bateu${sufixoCantos}</span>`;
       } else if (normalizarTexto(aconteceu) === normalizarTexto("Não")) {
-        tagHtml = '<span class="tag nao-vale">Não bateu</span>';
+        const cantosOficial2 = l["Cantos 1T"];
+        const sufixoCantos2 = (cantosOficial2 !== undefined && cantosOficial2 !== null && cantosOficial2 !== '') ? ` — ${cantosOficial2} cantos` : '';
+        tagHtml = `<span class="tag nao-vale">Não bateu${sufixoCantos2}</span>`;
       } else {
         tagHtml = '<span class="tag pendente">Sem dado</span>';
       }
