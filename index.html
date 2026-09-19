@@ -399,7 +399,9 @@ async function buscarStatusAoVivo(fixtureId) {
     const resp = await fetch(`${STATUS_AO_VIVO_URL}?fixture_id=${fixtureId}`);
     if (!resp.ok) throw new Error('status ' + resp.status);
     const dados = await resp.json();
-    cacheStatusAoVivo[fixtureId] = dados;
+    if (dados && dados.status) {
+      cacheStatusAoVivo[fixtureId] = dados;
+    }
     return dados;
   } catch (erro) {
     console.warn('Falha ao buscar status ao vivo do fixture', fixtureId, erro.message);
@@ -733,7 +735,18 @@ function renderizarLista() {
 async function carregarDetalhesJogo(fixtureId, ladoApontado, elDet, horaJogo) {
   const dados = await buscarStatusAoVivo(fixtureId);
   if (!dados || !dados.status) {
-    elDet.innerHTML = '<div>Não consegui buscar os detalhes ao vivo agora. Tenta de novo em instantes.</div>';
+    elDet.innerHTML = `
+      <div style="margin-bottom:8px;">Não consegui buscar os detalhes ao vivo agora (pode ser limite temporário da fonte de dados).</div>
+      <button class="btn-retry-detalhes" style="font-size:12px; padding:5px 12px;">Tentar novamente</button>
+    `;
+    const btnRetry = elDet.querySelector('.btn-retry-detalhes');
+    if (btnRetry) {
+      btnRetry.addEventListener('click', (e) => {
+        e.stopPropagation();
+        elDet.innerHTML = '<div style="opacity:0.6;">Carregando detalhes...</div>';
+        carregarDetalhesJogo(fixtureId, ladoApontado, elDet, horaJogo);
+      });
+    }
     return;
   }
 
