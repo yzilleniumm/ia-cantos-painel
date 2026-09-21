@@ -312,7 +312,9 @@ const GIST_OVER_URL = "https://gist.githubusercontent.com/yzilleniumm/38dee4e466
 const GIST_UNDER_URL = "https://gist.githubusercontent.com/yzilleniumm/38dee4e466b9787f8ec9d4bce19dc163/raw/registro_leitura_facil_menos35.csv";
 const CHECKS_RAW_URL = "https://gist.githubusercontent.com/yzilleniumm/38dee4e466b9787f8ec9d4bce19dc163/raw/checks.json";
 const CHECKS_PROXY_URL = "https://ia-cantos-checks-proxy.yzilleniumm.workers.dev/";
-const STATUS_AO_VIVO_URL = "https://ia-cantos-checks-proxy.yzilleniumm.workers.dev/status-ao-vivo";
+const AO_VIVO_GIST_URL = "https://gist.githubusercontent.com/yzilleniumm/38dee4e466b9787f8ec9d4bce19dc163/raw/ao_vivo.json";
+let cacheAoVivoCompleto = null;
+let timestampCacheAoVivo = 0;
 let cacheStatusAoVivo = {};
 
 const CONFIG_MERCADO = {
@@ -392,21 +394,22 @@ function formatarData(str) {
 }
 
 async function buscarStatusAoVivo(fixtureId) {
-  if (cacheStatusAoVivo[fixtureId] !== undefined) {
-    return cacheStatusAoVivo[fixtureId];
-  }
-  try {
-    const resp = await fetch(`${STATUS_AO_VIVO_URL}?fixture_id=${fixtureId}`);
-    if (!resp.ok) throw new Error('status ' + resp.status);
-    const dados = await resp.json();
-    if (dados && dados.status) {
-      cacheStatusAoVivo[fixtureId] = dados;
+  const agora = Date.now();
+  if (!cacheAoVivoCompleto || (agora - timestampCacheAoVivo) > 20000) {
+    try {
+      const resp = await fetch(AO_VIVO_GIST_URL + '?t=' + agora);
+      if (!resp.ok) throw new Error('status ' + resp.status);
+      cacheAoVivoCompleto = await resp.json();
+      timestampCacheAoVivo = agora;
+    } catch (erro) {
+      console.warn('Falha ao buscar dados ao vivo do gist', erro.message);
+      return null;
     }
-    return dados;
-  } catch (erro) {
-    console.warn('Falha ao buscar status ao vivo do fixture', fixtureId, erro.message);
-    return null;
   }
+
+  const dadosJogo = cacheAoVivoCompleto[String(fixtureId)];
+  if (!dadosJogo) return null;
+  return dadosJogo;
 }
 
 async function carregarChecks() {
