@@ -393,6 +393,22 @@ function formatarData(str) {
   }) + ' (BRT)';
 }
 
+async function verificarResultadoProvisorio(fixtureId, idTag, ladoApontado) {
+  const dados = await buscarStatusAoVivo(fixtureId);
+  const elTag = document.getElementById(idTag);
+  if (!elTag || !dados) return;
+
+  const statusComResultado = ['HT', '2H', 'FT'];
+  if (statusComResultado.includes(dados.status)) {
+    const cantosTime = ladoApontado === 'casa' ? dados.cantos_casa_1h : dados.cantos_visitante_1h;
+    if (cantosTime !== null && cantosTime !== undefined) {
+      const bateu = cantosTime < 3.5;
+      elTag.textContent = (bateu ? 'Bateu' : 'Não bateu') + ' (provisório)';
+      elTag.className = bateu ? 'tag vale' : 'tag nao-vale';
+    }
+  }
+}
+
 async function buscarStatusAoVivo(fixtureId) {
   const agora = Date.now();
   if (!cacheAoVivoCompleto || (agora - timestampCacheAoVivo) > 20000) {
@@ -659,8 +675,15 @@ function renderizarLista() {
           tagHtml = '<span class="tag pendente">Ainda não jogou</span>';
         } else if (minutosDesdeInicio < 0) {
           tagHtml = '<span class="tag pendente">Ainda não jogou</span>';
+        } else if (minutosDesdeInicio < 45) {
+          const idTagCheck = 'tagcheck-' + String(l['fixture_id'] || chaveJogo(l)).replace(/[^a-zA-Z0-9]/g, '');
+          tagHtml = `<span class="tag jogando" id="${idTagCheck}">Jogando</span>`;
         } else if (minutosDesdeInicio < 200) {
-          tagHtml = '<span class="tag jogando">Jogando</span>';
+          const idTagCheck2 = 'tagcheck-' + String(l['fixture_id'] || chaveJogo(l)).replace(/[^a-zA-Z0-9]/g, '');
+          tagHtml = `<span class="tag jogando" id="${idTagCheck2}">Jogando</span>`;
+          if (mercadoAtivo === 'under' && l['fixture_id']) {
+            verificarResultadoProvisorio(l['fixture_id'], idTagCheck2, info.lado === 'Casa' ? 'casa' : 'visitante');
+          }
         } else {
           tagHtml = '<span class="tag aguardando">Aguardando resultado</span>';
         }
