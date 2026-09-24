@@ -837,8 +837,8 @@ async function carregarDados() {
 
   try {
     const [dadosOver, dadosUnder] = await Promise.allSettled([
-      buscarCsv(GIST_OVER_URL),
-      buscarCsv(GIST_UNDER_URL)
+      buscarCsv(CONFIG_MERCADO.over.url),
+      buscarCsv(CONFIG_MERCADO.under.url)
     ]);
 
     dadosPorMercado.over = dadosOver.status === 'fulfilled' ? dadosOver.value : [];
