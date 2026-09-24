@@ -317,15 +317,18 @@ let cacheAoVivoCompleto = null;
 let timestampCacheAoVivo = 0;
 let cacheStatusAoVivo = {};
 
+const GIST_OVER15_URL = "https://gist.githubusercontent.com/yzilleniumm/38dee4e466b9787f8ec9d4bce19dc163/raw/registro_leitura_facil_maisde15.csv";
+
 const CONFIG_MERCADO = {
   over: {
-    url: GIST_OVER_URL,
-    colChance: "Chance (mais de 2.5)",
+    url: GIST_OVER15_URL,
+    colChance: "Chance (mais de 1.5)",
     colValePena: "Vale a pena?",
     colValorEsperado: "Valor esperado",
-    subtitulo: "Escanteios no 1º tempo &mdash; mandante/visitante com Mais de 2,5 (modelo original)",
+    subtitulo: "Escanteios no 1º tempo &mdash; mandante/visitante com Mais de 1,5 (validado: acerto de 84,9% nos jogos mais recomendados)",
     ringLabel: "Taxa de acerto<br>histórica (Over)",
-    avisoConfiabilidade: null
+    avisoConfiabilidade: null,
+    limiarAlto: 75, limiarMedio: 65, limiarValor: 75
   },
   under: {
     url: GIST_UNDER_URL,
@@ -334,7 +337,8 @@ const CONFIG_MERCADO = {
     colValorEsperado: "Valor esperado",
     subtitulo: "Escanteios no 1º tempo &mdash; mandante/visitante com Menos de 3,5 (modelo validado: bootstrap 99,8% mandante / 90,8% visitante)",
     ringLabel: "Taxa de acerto<br>histórica (Under)",
-    avisoConfiabilidade: null
+    avisoConfiabilidade: null,
+    limiarAlto: 90, limiarMedio: 50, limiarValor: 90
   }
 };
 
@@ -510,7 +514,7 @@ function atualizarIndicadores() {
   const pendentesTotal = dadosCompletos.filter(l => normalizarTexto(l["Aconteceu?"]) === normalizarTexto("Ainda não jogou"));
   const pendentesComValor = pendentesTotal.filter(l =>
     normalizarTexto(l[cfg.colValePena]) === normalizarTexto("Vale a pena") &&
-    (parsePercentual(l[cfg.colChance]) ?? 0) >= 50
+    (parsePercentual(l[cfg.colChance]) ?? 0) >= cfg.limiarValor
   );
   const finalizadosComValor = dadosCompletos.filter(l =>
     normalizarTexto(l[cfg.colValePena]) === normalizarTexto("Vale a pena") &&
@@ -661,8 +665,8 @@ function renderizarLista() {
     listaHtml = filtrados.map(l => {
       const chanceNum = parsePercentual(l[cfg.colChance]) ?? 0;
       let classeCor = 'chance-baixa';
-      if (chanceNum >= 90) classeCor = 'chance-alta';
-      else if (chanceNum >= 50) classeCor = 'chance-media';
+      if (chanceNum >= cfg.limiarAlto) classeCor = 'chance-alta';
+      else if (chanceNum >= cfg.limiarMedio) classeCor = 'chance-media';
       const aconteceu = l["Aconteceu?"];
       const info = interpretarDetalhes(l["Detalhes"]);
       let tagHtml = '';
